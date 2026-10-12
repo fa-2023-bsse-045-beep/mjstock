@@ -130,7 +130,7 @@
       .join('');
     header.innerHTML = `
       <div class="hdr-inner">
-        <a class="brand" href="/">MJ <span>AUTOS</span></a>
+        <a class="brand" href="/"><img src="/logo.jpg" alt="MJ AUTOS" class="brand-logo"> MJ <span>AUTOS</span></a>
         <nav class="nav" id="mainNav">${links}</nav>
         <div class="hdr-right">
           <div class="bell-wrap">
@@ -320,6 +320,7 @@
     return `
       <div class="bill-paper">
         <div class="bill-head">
+          <img src="/logo.jpg" alt="MJ AUTOS" class="bill-logo">
           <p class="shop">${App.esc(shop.name || 'MJ AUTOS')}</p>
           <div class="sub">Auto Parts &amp; Accessories</div>
           ${shop.address ? `<div class="sub">${App.esc(shop.address)}</div>` : ''}
