@@ -33,7 +33,7 @@
       // Keep cart prices/names in sync and drop products that were deleted.
       cart = cart.filter((it) => !it.product_id || byId.has(it.product_id));
       cart.forEach((it) => {
-        if (it.product_id) { const p = byId.get(it.product_id); it.price = p.price; it.name = p.name; }
+        if (it.product_id) { const p = byId.get(it.product_id); it.price = p.price; it.name = p.name; it.part_number = p.part_number || ''; }
       });
       renderProducts();
       renderCart();
@@ -46,7 +46,9 @@
     const q = $('search').value.trim().toLowerCase();
     if (!q) return products;
     const words = q.split(/\s+/);
-    return products.filter((p) => words.every((w) => p.name.toLowerCase().includes(w)));
+    return products.filter((p) =>
+      words.every((w) => p.name.toLowerCase().includes(w) || (p.part_number && p.part_number.toLowerCase().includes(w)))
+    );
   }
 
   function renderProducts() {
@@ -75,6 +77,7 @@
         const badge = p.status === 'out' ? '<span class="badge badge-out">Out of stock</span>' : p.status === 'low' ? '<span class="badge badge-low">Low stock</span>' : '';
         return `<button type="button" class="${cls}" data-id="${p.id}" ${p.status === 'out' ? 'aria-disabled="true"' : ''}>
             <span class="pname">${App.esc(p.name)}</span>
+            ${p.part_number ? `<span class="ppart"># ${App.esc(p.part_number)}</span>` : ''}
             <span class="pstock"><span>Stock: ${p.stock_qty}</span>${badge}</span>
             <span class="pprice">${App.money(p.price)}</span>
           </button>`;
@@ -93,7 +96,7 @@
     const existing = cart.find((c) => c.product_id === p.id);
     if (cartQtyFor(p.id) + 1 > p.stock_qty) return App.toast(`Only ${p.stock_qty} ${p.name} in stock`, 'warn');
     if (existing) existing.qty += 1;
-    else cart.push({ key: 'p' + p.id, product_id: p.id, name: p.name, price: p.price, qty: 1 });
+    else cart.push({ key: 'p' + p.id, product_id: p.id, name: p.name, part_number: p.part_number || '', price: p.price, qty: 1 });
     changed();
   }
 
@@ -135,11 +138,12 @@
       box.innerHTML = cart
         .map((c) => {
           const p = c.product_id ? byId.get(c.product_id) : null;
+          const partNo = (p && p.part_number) || c.part_number || '';
           const warn = p && c.qty > p.stock_qty ? `<div class="small" style="color:var(--out)">Only ${p.stock_qty} in stock!</div>` : '';
           return `<div class="cart-item" data-key="${App.esc(c.key)}">
               <div>
                 <div class="ci-name">${App.esc(c.name)}</div>
-                <div class="ci-sub">${App.money(c.price)} × ${c.qty}${c.product_id ? '' : ' · manual'}</div>
+                <div class="ci-sub">${partNo ? `<span class="part-badge">${App.esc(partNo)}</span> ` : ''}${App.money(c.price)} × ${c.qty}${c.product_id ? '' : ' · manual'}</div>
                 ${warn}
               </div>
               <div class="ci-total">${App.money((cents(c.price) * c.qty) / 100)}</div>
@@ -189,7 +193,11 @@
       customer_name: $('customer').value.trim(),
       discount_type: $('discountType').value,
       discount_value: $('discount').value || 0,
-      items: cart.map((c) => (c.product_id ? { product_id: c.product_id, quantity: c.qty } : { name: c.name, price: c.price, quantity: c.qty })),
+      items: cart.map((c) =>
+        c.product_id
+          ? { product_id: c.product_id, quantity: c.qty }
+          : { name: c.name, part_number: c.part_number || null, price: c.price, quantity: c.qty }
+      ),
     };
     await App.busy($('generateBill'), async () => {
       try {
@@ -260,14 +268,16 @@
   $('manualForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = $('mName').value.trim();
+    const partNo = $('mPartNo') ? $('mPartNo').value.trim() : '';
     const price = Number($('mPrice').value);
     const qty = Math.floor(Number($('mQty').value));
     if (!name) return App.toast('Enter the item name', 'error');
     if (name.length > 150) return App.toast('Item name is too long', 'error');
     if ($('mPrice').value === '' || !Number.isFinite(price) || price < 0 || price > 10000000) return App.toast('Enter a valid price', 'error');
     if (!Number.isFinite(qty) || qty < 1 || qty > 100000) return App.toast('Enter a valid quantity', 'error');
-    cart.push({ key: 'm' + manualSeq++, product_id: null, name, price: Math.round(price * 100) / 100, qty });
+    cart.push({ key: 'm' + manualSeq++, product_id: null, name, part_number: partNo, price: Math.round(price * 100) / 100, qty });
     $('mName').value = '';
+    if ($('mPartNo')) $('mPartNo').value = '';
     $('mPrice').value = '';
     $('mQty').value = '1';
     $('mName').focus();

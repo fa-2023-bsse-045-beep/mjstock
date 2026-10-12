@@ -21,7 +21,7 @@
 
   function render() {
     const q = $('search').value.trim().toLowerCase();
-    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products;
+    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.part_number && p.part_number.toLowerCase().includes(q))) : products;
     const { cart } = App.getCartData();
     const cartMap = new Map(cart.map((c) => [c.product_id, c.qty]));
 
@@ -34,6 +34,7 @@
               const cartBtnText = inCartQty > 0 ? `Add to Cart (${inCartQty})` : 'Add to Cart';
               return `<tr>
                 <td><b>${App.esc(p.name)}</b></td>
+                <td>${p.part_number ? `<span class="part-badge">${App.esc(p.part_number)}</span>` : '<span class="muted">-</span>'}</td>
                 <td class="num">${App.money(p.price)}</td>
                 <td class="num">${p.stock_qty}</td>
                 <td class="num">${p.min_stock}</td>
@@ -48,7 +49,7 @@
             }
           )
           .join('')
-      : `<tr><td colspan="6" class="empty">${products.length ? 'No product matches your search.' : 'No products yet. Click “Add Product”.'}</td></tr>`;
+      : `<tr><td colspan="7" class="empty">${products.length ? 'No product matches your search.' : 'No products yet. Click “Add Product”.'}</td></tr>`;
     updateCartBadge();
   }
 

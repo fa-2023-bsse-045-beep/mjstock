@@ -14,12 +14,15 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS products (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(150)  NOT NULL,
+  part_number VARCHAR(100),
   price       NUMERIC(12,2) NOT NULL CHECK (price >= 0),
   stock_qty   INTEGER       NOT NULL DEFAULT 0 CHECK (stock_qty >= 0),
   min_stock   INTEGER       NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
   created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS products_name_unique_idx ON products (LOWER(name));
+ALTER TABLE products ADD COLUMN IF NOT EXISTS part_number VARCHAR(100);
+CREATE INDEX IF NOT EXISTS products_part_number_idx ON products (LOWER(part_number));
 
 CREATE SEQUENCE IF NOT EXISTS bill_number_seq START WITH 1001;
 
@@ -40,11 +43,13 @@ CREATE TABLE IF NOT EXISTS bill_items (
   bill_id     INTEGER       NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
   product_id  INTEGER       REFERENCES products(id) ON DELETE SET NULL,  -- NULL = manual item
   item_name   VARCHAR(150)  NOT NULL,
+  part_number VARCHAR(100),
   price       NUMERIC(12,2) NOT NULL CHECK (price >= 0),
   quantity    INTEGER       NOT NULL CHECK (quantity > 0),
   line_total  NUMERIC(12,2) NOT NULL CHECK (line_total >= 0)
 );
 CREATE INDEX IF NOT EXISTS bill_items_bill_idx ON bill_items (bill_id);
+ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS part_number VARCHAR(100);
 
 CREATE TABLE IF NOT EXISTS stock_movements (
   id          SERIAL PRIMARY KEY,

@@ -19,12 +19,13 @@
 
   function render() {
     const q = $('search').value.trim().toLowerCase();
-    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products;
+    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.part_number && p.part_number.toLowerCase().includes(q))) : products;
     $('rows').innerHTML = list.length
       ? list
           .map(
             (p) => `<tr>
               <td><b>${App.esc(p.name)}</b></td>
+              <td>${p.part_number ? `<span class="part-badge">${App.esc(p.part_number)}</span>` : '<span class="muted">-</span>'}</td>
               <td class="num">${App.money(p.price)}</td>
               <td class="num">${p.stock_qty}</td>
               <td class="num">${p.min_stock}</td>
@@ -36,7 +37,7 @@
             </tr>`
           )
           .join('')
-      : '<tr><td colspan="6" class="empty">No products in this list.</td></tr>';
+      : '<tr><td colspan="7" class="empty">No products in this list.</td></tr>';
   }
 
   const REASON = { sale: 'Sale', restock: 'Restock', adjustment: 'Adjustment' };
@@ -58,7 +59,7 @@
             .join('')
         : '<tr><td colspan="5" class="empty">No stock movements yet.</td></tr>';
       const d = App.dialog({
-        title: 'Stock history: ' + product.name,
+        title: 'Stock history: ' + product.name + (product.part_number ? ` (#${product.part_number})` : ''),
         wide: true,
         body: `
           <p style="margin-top:0">Current stock <b>${product.stock_qty}</b> · Minimum <b>${product.min_stock}</b> · ${App.statusBadge(product.status)}</p>

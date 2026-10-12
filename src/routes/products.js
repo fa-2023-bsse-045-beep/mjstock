@@ -7,11 +7,12 @@ const { STATUS_SQL } = require('../stock');
 const router = express.Router();
 const owner = requireApi('owner');
 
-const SELECT = `SELECT p.id, p.name, p.price, p.stock_qty, p.min_stock, p.created_at, ${STATUS_SQL} AS status FROM products p`;
+const SELECT = `SELECT p.id, p.name, p.part_number, p.price, p.stock_qty, p.min_stock, p.created_at, ${STATUS_SQL} AS status FROM products p`;
 
 function readProduct(body = {}) {
   return {
     name: v.text(body.name, 'Product name', { required: true, max: 150 }),
+    part_number: v.text(body.part_number, 'Part number', { required: false, max: 100 }) || null,
     price: v.amount(body.price, 'Price', { max: 10000000 }),
     stock_qty: v.integer(body.stock_qty, 'Stock quantity', { min: 0, max: 1000000 }),
     min_stock: v.integer(body.min_stock, 'Minimum stock', { min: 0, max: 1000000 }),
@@ -34,8 +35,8 @@ router.post('/', owner, async (req, res) => {
   const p = readProduct(req.body);
   const product = await withTransaction(async (c) => {
     const { rows } = await c.query(
-      'INSERT INTO products (name, price, stock_qty, min_stock) VALUES ($1, $2, $3, $4) RETURNING id',
-      [p.name, p.price, p.stock_qty, p.min_stock]
+      'INSERT INTO products (name, part_number, price, stock_qty, min_stock) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [p.name, p.part_number, p.price, p.stock_qty, p.min_stock]
     );
     const id = rows[0].id;
     if (p.stock_qty > 0) {
@@ -56,8 +57,8 @@ router.put('/:id', owner, async (req, res) => {
     const cur = await c.query('SELECT stock_qty FROM products WHERE id = $1 FOR UPDATE', [id]);
     if (!cur.rows.length) throw new v.HttpError(404, 'Product not found');
     const diff = p.stock_qty - cur.rows[0].stock_qty;
-    await c.query('UPDATE products SET name = $1, price = $2, stock_qty = $3, min_stock = $4 WHERE id = $5', [
-      p.name, p.price, p.stock_qty, p.min_stock, id,
+    await c.query('UPDATE products SET name = $1, part_number = $2, price = $3, stock_qty = $4, min_stock = $5 WHERE id = $6', [
+      p.name, p.part_number, p.price, p.stock_qty, p.min_stock, id,
     ]);
     if (diff !== 0) {
       await c.query(

@@ -118,6 +118,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(214, 40, 40,
 .badge-low { background: var(--low-bg); color: var(--low); }
 .badge-out { background: var(--out-bg); color: var(--out); }
 .badge-role { background: #e8ebf3; color: #3a4254; }
+.part-badge { display: inline-block; padding: .1rem .45rem; background: #edf0f5; border: 1px solid #d8dde6; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .8rem; font-weight: 600; color: #334155; letter-spacing: .2px; }
 
 /* ---------- Tables ---------- */
 .table-wrap { overflow-x: auto; }
@@ -144,6 +145,7 @@ table.table { width: 100%; border-collapse: collapse; }
 .product-card:hover { border-color: var(--brand); box-shadow: var(--shadow); }
 .product-card:active { transform: scale(.98); }
 .product-card .pname { font-weight: 700; line-height: 1.25; }
+.product-card .ppart { font-size: .78rem; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--muted); background: #f1f3f7; padding: 2px 6px; border-radius: 4px; display: inline-block; width: fit-content; }
 .product-card .pprice { font-weight: 800; color: var(--brand); font-size: 1.05rem; margin-top: auto; }
 .product-card .pstock { font-size: .8rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: .3rem; flex-wrap: wrap; }
 .product-card .pstock > span:first-child { white-space: nowrap; }

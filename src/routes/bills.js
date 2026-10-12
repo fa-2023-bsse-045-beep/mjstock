@@ -20,11 +20,16 @@ function readBill(body = {}) {
     if (!it || typeof it !== 'object') throw new v.HttpError(400, `Item ${i + 1} is invalid`);
     const quantity = v.integer(it.quantity, `Quantity of item ${i + 1}`, { min: 1, max: 100000 });
     if (it.product_id !== undefined && it.product_id !== null) {
-      return { product_id: v.id(it.product_id, 'Product'), quantity };
+      return {
+        product_id: v.id(it.product_id, 'Product'),
+        quantity,
+        part_number: v.text(it.part_number, 'Part number', { required: false, max: 100 }) || null,
+      };
     }
     return {
       product_id: null,
       name: v.text(it.name, `Name of item ${i + 1}`, { required: true, max: 150 }),
+      part_number: v.text(it.part_number, `Part number of item ${i + 1}`, { required: false, max: 100 }) || null,
       price: v.amount(it.price, `Price of item ${i + 1}`, { max: 10000000 }),
       quantity,
     };
@@ -53,7 +58,7 @@ async function loadBill(clientOrPool, id) {
   );
   if (!b.rows.length) return null;
   const items = await clientOrPool.query(
-    'SELECT id, product_id, item_name, price, quantity, line_total FROM bill_items WHERE bill_id = $1 ORDER BY id',
+    'SELECT id, product_id, item_name, part_number, price, quantity, line_total FROM bill_items WHERE bill_id = $1 ORDER BY id',
     [id]
   );
   return { ...b.rows[0], items: items.rows };
@@ -69,7 +74,7 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
     const products = new Map();
     if (ids.length) {
       const { rows } = await c.query(
-        'SELECT id, name, price, stock_qty, min_stock FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+        'SELECT id, name, part_number, price, stock_qty, min_stock FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
         [ids]
       );
       rows.forEach((p) => products.set(p.id, p));
@@ -91,7 +96,14 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
     const lines = input.items.map((it) => {
       const p = it.product_id ? products.get(it.product_id) : null;
       const priceC = cents(p ? p.price : it.price);
-      return { product_id: it.product_id, name: p ? p.name : it.name, priceC, quantity: it.quantity, totalC: priceC * it.quantity };
+      return {
+        product_id: it.product_id,
+        name: p ? p.name : it.name,
+        part_number: p ? p.part_number : (it.part_number || null),
+        priceC,
+        quantity: it.quantity,
+        totalC: priceC * it.quantity,
+      };
     });
     const subtotalC = lines.reduce((s, l) => s + l.totalC, 0);
     let discountC = input.discountType === 'percent'
@@ -108,12 +120,13 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
     const { id: billId, bill_number: billNumber } = ins.rows[0];
 
     await c.query(
-      `INSERT INTO bill_items (bill_id, product_id, item_name, price, quantity, line_total)
-       SELECT $1::int, * FROM unnest($2::int[], $3::text[], $4::numeric[], $5::int[], $6::numeric[])`,
+      `INSERT INTO bill_items (bill_id, product_id, item_name, part_number, price, quantity, line_total)
+       SELECT $1::int, * FROM unnest($2::int[], $3::text[], $4::text[], $5::numeric[], $6::int[], $7::numeric[])`,
       [
         billId,
         lines.map((l) => l.product_id),
         lines.map((l) => l.name),
+        lines.map((l) => l.part_number),
         lines.map((l) => rupees(l.priceC)),
         lines.map((l) => l.quantity),
         lines.map((l) => rupees(l.totalC)),

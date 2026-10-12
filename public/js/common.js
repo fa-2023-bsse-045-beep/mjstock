@@ -184,7 +184,7 @@
           .map((p) => {
             const tag = isOwner ? 'button' : 'div';
             return `<${tag} class="bell-item" data-id="${p.id}" ${isOwner ? 'title="Click to restock"' : ''}>
-                <span><b>${App.esc(p.name)}</b><br><span class="small muted">Stock ${p.stock_qty} · Min ${p.min_stock}</span></span>
+                <span><b>${App.esc(p.name)}</b>${p.part_number ? ` <span class="muted small" style="font-family:monospace">(${App.esc(p.part_number)})</span>` : ''}<br><span class="small muted">Stock ${p.stock_qty} · Min ${p.min_stock}</span></span>
                 ${App.statusBadge(p.status)}
               </${tag}>`;
           })
@@ -221,7 +221,7 @@
   App.openRestock = function (product) {
     if (!product) return;
     const d = App.dialog({
-      title: 'Restock: ' + product.name,
+      title: 'Restock: ' + product.name + (product.part_number ? ` (#${product.part_number})` : ''),
       body: `
         <div class="form-error hidden"></div>
         <p class="muted" style="margin-top:0">Current stock: <b>${product.stock_qty}</b> · Minimum level: <b>${product.min_stock}</b></p>
@@ -261,13 +261,16 @@
 
   // Add (product = null) or edit a product. opts.name pre-fills the name; opts.onSaved(product) runs after saving.
   App.openProductForm = function (product, opts = {}) {
-    const p = product || { name: opts.name || '', price: '', stock_qty: 0, min_stock: 5 };
+    const p = product || { name: opts.name || '', part_number: opts.part_number || '', price: '', stock_qty: 0, min_stock: 5 };
     const d = App.dialog({
       title: product ? 'Edit product' : 'Add product',
       body: `
         <div class="form-error hidden"></div>
         <form id="productForm" novalidate>
-          <div class="field"><label for="pName">Product name</label><input id="pName" maxlength="150" required value="${App.esc(p.name)}"></div>
+          <div class="row">
+            <div class="field" style="flex:2"><label for="pName">Product name</label><input id="pName" maxlength="150" required value="${App.esc(p.name)}"></div>
+            <div class="field" style="flex:1"><label for="pPartNo">Part number (optional)</label><input id="pPartNo" maxlength="100" placeholder="e.g. 90915-YZZE1" value="${App.esc(p.part_number || '')}"></div>
+          </div>
           <div class="row">
             <div class="field"><label for="pPrice">Price (Rs)</label><input id="pPrice" type="number" min="0" step="0.01" required value="${App.esc(p.price)}"></div>
             <div class="field"><label for="pStock">Current stock</label><input id="pStock" type="number" min="0" step="1" required value="${App.esc(p.stock_qty)}"></div>
@@ -285,6 +288,7 @@
         errBox.classList.add('hidden');
         const body = {
           name: d.querySelector('#pName').value,
+          part_number: d.querySelector('#pPartNo').value,
           price: d.querySelector('#pPrice').value,
           stock_qty: d.querySelector('#pStock').value,
           min_stock: d.querySelector('#pMin').value,
@@ -310,7 +314,7 @@
     const rows = bill.items
       .map(
         (it, i) => `<tr>
-          <td>${i + 1}. ${App.esc(it.item_name)}</td>
+          <td>${i + 1}. <b>${App.esc(it.item_name)}</b>${it.part_number ? `<br><small class="muted" style="font-family:monospace;font-size:0.8rem">Part: ${App.esc(it.part_number)}</small>` : ''}</td>
           <td class="n">${App.money(it.price)}</td>
           <td class="n">${it.quantity}</td>
           <td class="n">${App.money(it.line_total)}</td>
@@ -434,8 +438,9 @@
       existing.qty += 1;
       existing.price = p.price;
       existing.name = p.name;
+      existing.part_number = p.part_number || '';
     } else {
-      data.cart.push({ key: 'p' + p.id, product_id: p.id, name: p.name, price: p.price, qty: 1 });
+      data.cart.push({ key: 'p' + p.id, product_id: p.id, name: p.name, part_number: p.part_number || '', price: p.price, qty: 1 });
     }
     App.saveCartData(data);
     const totalQty = existing ? existing.qty : 1;

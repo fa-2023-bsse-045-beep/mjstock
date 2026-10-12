@@ -15,7 +15,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
     ),
     query('SELECT COUNT(*)::int AS n FROM products'),
     query(
-      `SELECT p.id, p.name, p.price, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status
+      `SELECT p.id, p.name, p.part_number, p.price, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status
          FROM products p WHERE p.stock_qty <= p.min_stock OR p.stock_qty <= 0
         ORDER BY p.stock_qty, LOWER(p.name)`
     ),

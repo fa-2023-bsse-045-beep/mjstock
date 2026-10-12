@@ -15,7 +15,7 @@
         ? d.alerts
             .map(
               (p) => `<tr>
-                <td><b>${App.esc(p.name)}</b></td>
+                <td><b>${App.esc(p.name)}</b>${p.part_number ? ` <span class="muted small" style="font-family:monospace">(${App.esc(p.part_number)})</span>` : ''}</td>
                 <td class="num">${p.stock_qty}</td>
                 <td class="num">${p.min_stock}</td>
                 <td>${App.statusBadge(p.status)}</td>

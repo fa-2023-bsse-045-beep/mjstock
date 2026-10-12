@@ -35,7 +35,7 @@ async function stockRows(status) {
     where = `WHERE ${STATUS_SQL} = $1`;
   }
   const { rows } = await query(
-    `SELECT p.id, p.name, p.price, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status
+    `SELECT p.id, p.name, p.part_number, p.price, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status
        FROM products p ${where} ORDER BY LOWER(p.name)`,
     params
   );
@@ -73,14 +73,14 @@ router.get('/export.csv', async (req, res) => {
   sendCsv(
     res,
     `mj-autos-stock-${status}-${new Date().toISOString().slice(0, 10)}.csv`,
-    ['Product', 'Price (Rs)', 'Stock', 'Minimum', 'Status'],
-    rows.map((p) => [[p.name, true], [p.price.toFixed(2)], [p.stock_qty], [p.min_stock], [label[p.status]]])
+    ['Product', 'Part #', 'Price (Rs)', 'Stock', 'Minimum', 'Status'],
+    rows.map((p) => [[p.name, true], [p.part_number || '', true], [p.price.toFixed(2)], [p.stock_qty], [p.min_stock], [label[p.status]]])
   );
 });
 
 router.get('/:productId/movements', async (req, res) => {
   const id = v.id(req.params.productId, 'Product');
-  const p = await query(`SELECT p.id, p.name, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status FROM products p WHERE p.id = $1`, [id]);
+  const p = await query(`SELECT p.id, p.name, p.part_number, p.stock_qty, p.min_stock, ${STATUS_SQL} AS status FROM products p WHERE p.id = $1`, [id]);
   if (!p.rows.length) throw new v.HttpError(404, 'Product not found');
   res.json({ product: p.rows[0], movements: await movementRows(id, 200) });
 });
