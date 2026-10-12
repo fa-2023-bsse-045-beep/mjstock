@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <h1>Products</h1>
+      <div class="btn-group">
+        <a class="btn btn-dark" href="/pos" id="viewCartBtn">🛒 View Cart</a>
+        <button class="btn btn-primary" id="addBtn">+ Add Product</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="field" style="max-width:420px">
+        <input id="search" type="search" placeholder="Search products…" aria-label="Search products">
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Name</th><th class="num">Price</th><th class="num">Stock</th><th class="num">Min stock</th><th>Status</th><th class="actions">Actions</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script src="/js/products.js"></script>
+</body>
+</html>

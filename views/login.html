@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-card">
+      <span class="brand">MJ <span>AUTOS</span></span>
+      <div class="tag">Billing &amp; Stock — staff login</div>
+      <div class="form-error hidden" id="loginError" role="alert"></div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required maxlength="255" autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" required maxlength="200">
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" id="loginBtn">Log in</button>
+      </form>
+    </div>
+  </main>
+  <script src="/js/login.js"></script>
+</body>
+</html>

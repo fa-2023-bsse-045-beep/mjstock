@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bill History · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head"><h1>Bill History</h1></div>
+
+    <div class="stats">
+      <div class="stat good"><div class="label">Today's total sales</div><div class="value" id="todayTotal">…</div></div>
+      <div class="stat"><div class="label">Bills today</div><div class="value" id="todayCount">…</div></div>
+    </div>
+
+    <div class="card">
+      <form class="row" id="filterForm">
+        <div class="field" style="flex:2"><label for="q">Search bill number or customer name</label><input id="q" type="search" maxlength="100" placeholder="e.g. 1005 or Ali"></div>
+        <div class="field"><label for="date">Date</label><input id="date" type="date"></div>
+        <div class="field" style="flex:0"><button class="btn btn-dark" type="submit">Search</button></div>
+        <div class="field" style="flex:0"><button class="btn" type="button" id="resetBtn">Reset</button></div>
+      </form>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Bill #</th><th>Time</th><th>Customer</th><th class="num hide-sm">Items</th><th class="hide-sm">Cashier</th><th class="num">Total</th><th class="actions">Actions</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="mt right"><button class="btn hidden" id="moreBtn">Load more</button></div>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script src="/js/bills.js"></script>
+</body>
+</html>

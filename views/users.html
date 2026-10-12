@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head"><h1>Users</h1></div>
+    <div class="grid-2">
+      <section class="card">
+        <h2>Staff accounts</h2>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th class="actions">Actions</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Add cashier</h2>
+        <p class="small muted" style="margin-top:0">Cashiers can only create and print bills. There is no public sign-up — only you can add staff.</p>
+        <div class="form-error hidden" id="formError"></div>
+        <form id="userForm" novalidate>
+          <div class="field"><label for="uName">Name</label><input id="uName" maxlength="100" required></div>
+          <div class="field"><label for="uEmail">Email</label><input id="uEmail" type="email" maxlength="255" required autocomplete="off"></div>
+          <div class="field"><label for="uPass">Password (8–72 characters)</label><input id="uPass" type="password" minlength="8" maxlength="72" required autocomplete="new-password"></div>
+          <button class="btn btn-primary" type="submit" id="addBtn">Create cashier</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script src="/js/users.js"></script>
+</body>
+</html>

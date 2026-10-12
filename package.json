@@ -1,0 +1,26 @@
+{
+  "name": "mj-autos-pos",
+  "version": "1.0.0",
+  "description": "MJ AUTOS - POS / billing and stock management for an auto parts shop",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "init-db": "node scripts/init-db.js",
+    "create-owner": "node scripts/create-owner.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

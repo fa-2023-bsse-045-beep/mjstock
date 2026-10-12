@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stock Report · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <h1>Stock Report</h1>
+      <a class="btn btn-dark" id="exportBtn" href="/api/stock/export.csv?status=all">Export to CSV</a>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:.75rem; align-items:center">
+        <div class="segmented" id="statusFilter" role="tablist">
+          <button type="button" data-status="all" class="active">All <span data-count="all"></span></button>
+          <button type="button" data-status="ok">OK <span data-count="ok"></span></button>
+          <button type="button" data-status="low">Low <span data-count="low"></span></button>
+          <button type="button" data-status="out">Out <span data-count="out"></span></button>
+        </div>
+        <div class="field" style="margin:0; max-width:320px"><input id="search" type="search" placeholder="Search…" aria-label="Search products"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Product</th><th class="num">Price</th><th class="num">Stock</th><th class="num">Minimum</th><th>Status</th><th class="actions">Actions</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script src="/js/stock.js"></script>
+</body>
+</html>

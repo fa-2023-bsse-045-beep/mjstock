@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Bill · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="has-cart-bar">
+  <header id="appHeader" class="app-header"></header>
+
+  <main class="container pos">
+    <!-- Left: products -->
+    <section>
+      <div class="search-box">
+        <input id="search" type="search" placeholder="Search products… (press / to focus, Enter to add)" autocomplete="off" aria-label="Search products">
+      </div>
+      <div class="products-grid" id="productGrid"><div class="muted">Loading products…</div></div>
+
+      <details class="card manual-card" id="manualBox">
+        <summary>+ Add manual item (not in list)</summary>
+        <form id="manualForm" novalidate>
+          <div class="row">
+            <div class="field" style="flex:2"><label for="mName">Item name</label><input id="mName" maxlength="150" required></div>
+            <div class="field"><label for="mPrice">Price (Rs)</label><input id="mPrice" type="number" min="0" step="0.01" required></div>
+            <div class="field"><label for="mQty">Qty</label><input id="mQty" type="number" min="1" step="1" value="1" required></div>
+            <div class="field" style="flex:0"><button class="btn btn-dark" type="submit">Add</button></div>
+          </div>
+          <div class="small muted">Manual items do not change stock.</div>
+        </form>
+      </details>
+    </section>
+
+    <!-- Right: cart -->
+    <aside class="card cart" id="cart">
+      <div class="cart-head">
+        <h2 style="margin:0">Cart <span class="muted small" id="cartCount"></span></h2>
+        <button class="btn btn-sm btn-danger" id="clearCart">Clear Cart</button>
+      </div>
+      <div class="cart-items" id="cartItems"></div>
+
+      <div class="field">
+        <label for="customer">Customer name (optional)</label>
+        <input id="customer" maxlength="100" placeholder="Walk-in customer">
+      </div>
+      <div class="field">
+        <label for="discount">Discount (optional)</label>
+        <div class="discount-row">
+          <input id="discount" type="number" min="0" step="0.01" placeholder="0">
+          <select id="discountType" aria-label="Discount type"><option value="amount">Rs</option><option value="percent">%</option></select>
+        </div>
+      </div>
+
+      <div class="totals">
+        <div class="line"><span>Subtotal</span><span id="subtotal">Rs 0</span></div>
+        <div class="line"><span>Discount</span><span id="discountShow">- Rs 0</span></div>
+      </div>
+      <div class="grand"><span class="label">Grand Total</span><span class="amount" id="grandTotal">Rs 0</span></div>
+      <button class="btn btn-primary btn-lg btn-block" id="generateBill">Generate Bill</button>
+    </aside>
+  </main>
+
+  <div class="mobile-cart-bar">
+    <span><span id="mbCount">0 items</span> · <span class="amount" id="mbTotal">Rs 0</span></span>
+    <a class="btn btn-primary btn-sm" href="#cart">View Cart</a>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/pos.js"></script>
+</body>
+</html>

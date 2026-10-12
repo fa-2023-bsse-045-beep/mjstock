@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <h1>Dashboard</h1>
+      <a class="btn btn-primary btn-lg" href="/pos">+ New Bill</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat good"><div class="label">Today's sales</div><div class="value" id="todayTotal">…</div></div>
+      <div class="stat"><div class="label">Bills today</div><div class="value" id="todayCount">…</div></div>
+      <div class="stat"><div class="label">Products</div><div class="value" id="productCount">…</div></div>
+      <div class="stat warn"><div class="label">Need restocking</div><div class="value" id="alertCount">…</div></div>
+    </div>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="page-head" style="margin-bottom:.5rem">
+          <h2 style="margin:0">Low Stock / Out of Stock items</h2>
+          <a href="/stock" class="small">Stock report →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Product</th><th class="num">Stock</th><th class="num">Min</th><th>Status</th><th></th></tr></thead>
+            <tbody id="alertRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="page-head" style="margin-bottom:.5rem">
+          <h2 style="margin:0">Recent bills</h2>
+          <a href="/bills" class="small">All bills →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Bill #</th><th>Time</th><th>Customer</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody id="recentRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
