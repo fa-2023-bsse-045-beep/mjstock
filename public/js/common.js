@@ -334,7 +334,11 @@
           <p class="shop">${App.esc(shop.name || 'MJ AUTOS')}</p>
           <div class="sub">Auto Parts &amp; Accessories</div>
           ${shop.address ? `<div class="sub">${App.esc(shop.address)}</div>` : ''}
-          ${shop.phone ? `<div class="sub">Phone: ${App.esc(shop.phone)}</div>` : ''}
+          <div class="bill-contacts">
+            <span>Hafiz Qamar Raza: <b>03008498742</b></span>
+            <span class="contact-sep">·</span>
+            <span>Ch Ahsan: <b>03083412615</b></span>
+          </div>
         </div>
         <div class="bill-meta">
           <div>Bill No: <b>#${bill.bill_number}</b></div>

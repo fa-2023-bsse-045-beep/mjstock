@@ -217,6 +217,18 @@ dialog.modal::backdrop { background: rgba(15, 20, 30, .55); }
 .bill-logo { max-width: 68px; max-height: 68px; margin: 0 auto .4rem auto; display: block; object-fit: contain; border-radius: 6px; }
 .bill-head .shop { font-size: 1.9rem; font-weight: 900; letter-spacing: 2px; margin: 0; }
 .bill-head .sub { font-size: .85rem; }
+.bill-contacts {
+  font-size: .88rem;
+  margin-top: .35rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  color: #111;
+}
+.bill-contacts b { font-weight: 700; letter-spacing: .5px; }
+.bill-contacts .contact-sep { color: #888; font-weight: bold; }
 .bill-meta { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem 1rem; font-size: .9rem; margin-bottom: .6rem; }
 .bill-meta .r { text-align: right; }
 .bill-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
@@ -240,6 +252,8 @@ dialog.modal::backdrop { background: rgba(15, 20, 30, .55); }
   body.print-80 .bill-paper { width: 72mm; font-size: 11px; margin: 0; }
   body.print-80 .bill-head .shop { font-size: 18px; letter-spacing: 1px; }
   body.print-80 .bill-head .sub { font-size: 10px; }
+  body.print-80 .bill-contacts { font-size: 10px; flex-direction: column; gap: 1px; }
+  body.print-80 .bill-contacts .contact-sep { display: none; }
   body.print-80 .bill-meta { grid-template-columns: 1fr; font-size: 10.5px; }
   body.print-80 .bill-meta .r { text-align: left; }
   body.print-80 .bill-table { font-size: 10.5px; }

@@ -47,7 +47,7 @@ router.get('/me', auth.requireApi(), (req, res) => {
     shop: {
       name: 'MJ AUTOS',
       address: process.env.SHOP_ADDRESS || '',
-      phone: process.env.SHOP_PHONE || '',
+      phone: process.env.SHOP_PHONE || 'Hafiz Qamar Raza: 03008498742 | Ch Ahsan: 03083412615',
     },
   });
 });
