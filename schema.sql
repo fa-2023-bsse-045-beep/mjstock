@@ -69,3 +69,16 @@ CREATE TABLE IF NOT EXISTS stock_alert_log (
   alert_date  DATE    NOT NULL,
   PRIMARY KEY (product_id, alert_date)
 );
+
+-- Monthly expense entries. Entries are IMMUTABLE once created (no UPDATE/DELETE for cashiers).
+-- Only the owner can see all entries; cashiers can only see their own.
+CREATE TABLE IF NOT EXISTS expenses (
+  id          SERIAL PRIMARY KEY,
+  amount      NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  purpose     VARCHAR(150)  NOT NULL,
+  notes       TEXT,
+  created_by  INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS expenses_created_at_idx  ON expenses (created_at DESC);
+CREATE INDEX IF NOT EXISTS expenses_created_by_idx  ON expenses (created_by, created_at DESC);

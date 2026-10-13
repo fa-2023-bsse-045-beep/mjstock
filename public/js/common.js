@@ -113,19 +113,25 @@
 
   // ---------- Header, nav, bell ----------
   const NAV = [
-    { href: '/dashboard', label: 'Dashboard', key: 'dashboard', owner: true },
-    { href: '/pos', label: 'New Bill', key: 'pos' },
-    { href: '/products', label: 'Products', key: 'products', owner: true },
-    { href: '/stock', label: 'Stock Report', key: 'stock', owner: true },
-    { href: '/bills', label: 'Bill History', key: 'bills', owner: true },
-    { href: '/users', label: 'Users', key: 'users', owner: true },
+    { href: '/dashboard',   label: 'Dashboard',        key: 'dashboard',    owner: true  },
+    { href: '/pos',         label: 'New Bill',          key: 'pos'                        },
+    { href: '/products',    label: 'Products',          key: 'products',     owner: true  },
+    { href: '/stock',       label: 'Stock Report',      key: 'stock',        owner: true  },
+    { href: '/bills',       label: 'Bill History',      key: 'bills',        owner: true  },
+    { href: '/expenses',    label: 'Monthly Records',   key: 'expenses',     owner: true  },
+    { href: '/my-expenses', label: 'My Expenses',       key: 'my-expenses',  cashier: true },
+    { href: '/users',       label: 'Users',             key: 'users',        owner: true  },
   ];
   const BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 
   function renderHeader(active) {
     const header = document.getElementById('appHeader');
     header.className = 'app-header';
-    const links = NAV.filter((n) => !n.owner || App.user.role === 'owner')
+    const links = NAV.filter((n) => {
+        if (n.owner   && App.user.role !== 'owner')   return false;
+        if (n.cashier && App.user.role !== 'cashier') return false;
+        return true;
+      })
       .map((n) => `<a href="${n.href}" class="${n.key === active ? 'active' : ''}">${n.label}</a>`)
       .join('');
     header.innerHTML = `

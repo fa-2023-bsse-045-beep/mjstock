@@ -276,3 +276,45 @@ dialog.modal::backdrop { background: rgba(15, 20, 30, .55); }
   .table th, .table td { padding: .5rem .4rem; }
   .hide-sm { display: none; }
 }
+
+/* ---------- Expenses / Monthly Records ---------- */
+.stat.exp-stat { border-left-color: var(--out); }
+.stat.exp-stat .value { color: var(--out); }
+
+.exp-amount { color: var(--out); }
+
+.purpose-pill {
+  display: inline-block;
+  background: #f0f2f6;
+  border: 1px solid #dde0e8;
+  border-radius: 999px;
+  padding: .1rem .6rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: #3a4254;
+  white-space: nowrap;
+}
+
+.month-picker {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.month-picker select,
+.month-picker input[type="number"] {
+  width: auto;
+}
+
+.search-row {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#submitNote {
+  color: var(--low);
+  font-style: italic;
+}
+

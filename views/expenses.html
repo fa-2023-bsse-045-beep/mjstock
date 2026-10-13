@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monthly Records · MJ AUTOS</title>
+  <meta name="description" content="Admin view of monthly income, expenses, and cashier-wise breakdown for MJ AUTOS.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>Monthly Records</h1>
+      <!-- Month / Year picker -->
+      <div class="month-picker">
+        <select id="filterMonth" aria-label="Month">
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+        <input id="filterYear" type="number" min="2000" max="2100" style="width:90px" aria-label="Year">
+        <button class="btn btn-dark" id="applyFilter">Apply</button>
+      </div>
+    </div>
+
+    <!-- ── Summary stats ─────────────────────────────────────────────── -->
+    <div class="stats" id="summaryStats">
+      <div class="stat good">
+        <div class="label">Total Income</div>
+        <div class="value" id="statIncome">…</div>
+        <div class="small muted" id="statBillCount"></div>
+      </div>
+      <div class="stat exp-stat">
+        <div class="label">Total Expenses</div>
+        <div class="value" id="statExpenses">…</div>
+        <div class="small muted" id="statExpCount"></div>
+      </div>
+      <div class="stat" id="statBalanceTile">
+        <div class="label">Remaining Balance</div>
+        <div class="value" id="statBalance">…</div>
+      </div>
+    </div>
+
+    <!-- ── Breakdowns ─────────────────────────────────────────────────── -->
+    <div class="grid-2" style="margin-bottom:1rem">
+      <section class="card">
+        <h2 style="margin-bottom:.75rem">By Purpose</h2>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Purpose</th><th class="num">Entries</th><th class="num">Total</th></tr></thead>
+            <tbody id="purposeRows"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin-bottom:.75rem">By Cashier</h2>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Cashier</th><th class="num">Entries</th><th class="num">Total</th></tr></thead>
+            <tbody id="cashierRows"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ── All expense entries ────────────────────────────────────────── -->
+    <section class="card">
+      <div class="page-head" style="margin-bottom:.75rem">
+        <h2 style="margin:0">All Expense Entries</h2>
+        <div class="search-row">
+          <input id="searchQ" type="search" placeholder="Search purpose or cashier…" style="width:240px" aria-label="Search">
+          <select id="filterCashier" aria-label="Filter by cashier" style="width:180px">
+            <option value="">All cashiers</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date &amp; Time</th>
+              <th>Cashier</th>
+              <th>Purpose</th>
+              <th>Notes</th>
+              <th class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="expenseRows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="loadMoreWrap" class="hidden" style="text-align:center;padding:.75rem">
+        <button class="btn" id="loadMoreBtn">Load more entries</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/expenses.js"></script>
+</body>
+</html>

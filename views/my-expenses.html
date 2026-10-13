@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Expenses · MJ AUTOS</title>
+  <meta name="description" content="Log and view your personal expense entries for MJ AUTOS.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>My Expenses</h1>
+      <!-- Month / Year picker -->
+      <div class="month-picker">
+        <select id="filterMonth" aria-label="Month">
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+        <input id="filterYear" type="number" min="2000" max="2100" style="width:90px" aria-label="Year">
+        <button class="btn btn-dark" id="applyFilter">Apply</button>
+      </div>
+    </div>
+
+    <!-- ── Summary ────────────────────────────────────────────────────── -->
+    <div class="stats" style="margin-bottom:1rem">
+      <div class="stat good">
+        <div class="label">My Income (Bills)</div>
+        <div class="value" id="statIncome">…</div>
+        <div class="small muted" id="statBillCount"></div>
+      </div>
+      <div class="stat exp-stat">
+        <div class="label">My Expenses</div>
+        <div class="value" id="statExpenses">…</div>
+        <div class="small muted" id="statExpCount"></div>
+      </div>
+      <div class="stat" id="statBalanceTile">
+        <div class="label">Balance</div>
+        <div class="value" id="statBalance">…</div>
+      </div>
+    </div>
+
+    <!-- ── Add new expense ─────────────────────────────────────────────── -->
+    <section class="card" style="margin-bottom:1rem">
+      <h2 style="margin-bottom:.75rem">Add New Expense Entry</h2>
+      <div class="form-error hidden" id="formError"></div>
+      <form id="expenseForm" novalidate>
+        <div class="row">
+          <div class="field" style="flex:1;min-width:130px">
+            <label for="expAmount">Amount (Rs)</label>
+            <input id="expAmount" type="number" min="0.01" step="0.01" placeholder="e.g. 500" required>
+          </div>
+          <div class="field" style="flex:3;min-width:200px">
+            <label for="expPurpose">Purpose <span style="color:var(--brand)">*</span></label>
+            <input id="expPurpose" maxlength="150" placeholder="e.g. Petrol, Lunch, Supplies…" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="expNotes">Notes (optional)</label>
+          <textarea id="expNotes" maxlength="1000" rows="2" placeholder="Any additional details…" style="resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;align-items:center">
+          <span class="small muted" id="submitNote">⚠ Once submitted, this entry cannot be edited or deleted.</span>
+          <button class="btn btn-primary" type="submit" id="submitBtn">Add Entry</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── My past entries ────────────────────────────────────────────── -->
+    <section class="card">
+      <h2 style="margin-bottom:.75rem">My Past Entries</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date &amp; Time</th>
+              <th>Purpose</th>
+              <th>Notes</th>
+              <th class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="expenseRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="loadMoreWrap" class="hidden" style="text-align:center;padding:.75rem">
+        <button class="btn" id="loadMoreBtn">Load more entries</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/my-expenses.js"></script>
+</body>
+</html>

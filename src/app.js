@@ -53,6 +53,7 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/stock', require('./routes/stock'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api', (req, res, next) => next(new HttpError(404, 'Not found')));
 
 // ---------- Pages (every page except /login requires a session) ----------
@@ -74,6 +75,8 @@ app.get('/products', requirePage('owner'), page('products.html'));
 app.get('/bills', requirePage('owner'), page('bills.html'));
 app.get('/stock', requirePage('owner'), page('stock.html'));
 app.get('/users', requirePage('owner'), page('users.html'));
+app.get('/expenses', requirePage('owner'), page('expenses.html'));
+app.get('/my-expenses', requirePage(), page('my-expenses.html'));
 
 app.use((req, res) => {
   if (/\.[a-z0-9]+$/i.test(req.path)) return res.status(404).type('text').send('Not found'); // missing file
