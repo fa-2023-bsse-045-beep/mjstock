@@ -32,7 +32,7 @@
     <!-- ── Summary ────────────────────────────────────────────────────── -->
     <div class="stats" style="margin-bottom:1rem">
       <div class="stat good">
-        <div class="label">My Income (Bills)</div>
+        <div class="label">My Total Sales</div>
         <div class="value" id="statIncome">…</div>
         <div class="small muted" id="statBillCount"></div>
       </div>
@@ -41,8 +41,13 @@
         <div class="value" id="statExpenses">…</div>
         <div class="small muted" id="statExpCount"></div>
       </div>
+      <div class="stat" id="statCashInHandTile" style="border-left-color:var(--ok)">
+        <div class="label">💵 Cash in Drawer</div>
+        <div class="value" id="statCashInHand" style="color:#15803d">…</div>
+        <div class="small muted" id="statCashInHandSub">Cash Sales − Expenses</div>
+      </div>
       <div class="stat" id="statBalanceTile">
-        <div class="label">Balance</div>
+        <div class="label">Overall Balance</div>
         <div class="value" id="statBalance">…</div>
       </div>
     </div>

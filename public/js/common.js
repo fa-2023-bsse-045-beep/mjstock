@@ -341,6 +341,8 @@
           <div class="r">${App.dateTime(bill.created_at)}</div>
           <div>Customer: <b>${App.esc(bill.customer_name || 'Walk-in customer')}</b></div>
           <div class="r">Cashier: ${App.esc(bill.cashier_name || '-')}</div>
+          <div>Payment: <b>${bill.payment_method === 'account' ? '💳 ' + App.esc(bill.payment_account || 'Account') : '💵 Cash'}</b></div>
+          <div class="r"></div>
         </div>
         <table class="bill-table">
           <thead><tr><th>Item</th><th class="n">Price</th><th class="n">Qty</th><th class="n">Total</th></tr></thead>

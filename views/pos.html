@@ -53,6 +53,42 @@
         </div>
       </div>
 
+      <div class="field">
+        <label>Payment Method</label>
+        <div class="pay-toggle">
+          <label class="pay-option active-cash" id="lblCash">
+            <input type="radio" name="payment_method" id="payCash" value="cash" checked>
+            💵 Cash
+          </label>
+          <label class="pay-option" id="lblAccount">
+            <input type="radio" name="payment_method" id="payAccount" value="account">
+            💳 Account / Online
+          </label>
+        </div>
+        <div id="accountBox" class="hidden" style="margin-top:.4rem">
+          <label for="paymentAccount" style="font-size:.8rem;color:var(--muted)">Account name (e.g. JazzCash, EasyPaisa, Bank)</label>
+          <input id="paymentAccount" list="accountList" maxlength="100" placeholder="Type or select account…">
+          <datalist id="accountList">
+            <option value="JazzCash">
+            <option value="EasyPaisa">
+            <option value="SadaPay">
+            <option value="NayaPay">
+            <option value="Meezan Bank">
+            <option value="HBL">
+            <option value="Bank Alfalah">
+            <option value="UBL">
+            <option value="MCB">
+            <option value="Allied Bank">
+          </datalist>
+          <div style="display:flex;gap:.35rem;margin-top:.35rem;flex-wrap:wrap">
+            <button type="button" class="quick-acc-btn" data-acc="JazzCash">JazzCash</button>
+            <button type="button" class="quick-acc-btn" data-acc="EasyPaisa">EasyPaisa</button>
+            <button type="button" class="quick-acc-btn" data-acc="Meezan Bank">Meezan Bank</button>
+            <button type="button" class="quick-acc-btn" data-acc="Bank Transfer">Bank Transfer</button>
+          </div>
+        </div>
+      </div>
+
       <div class="totals">
         <div class="line"><span>Subtotal</span><span id="subtotal">Rs 0</span></div>
         <div class="line"><span>Discount</span><span id="discountShow">- Rs 0</span></div>

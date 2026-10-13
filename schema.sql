@@ -27,15 +27,19 @@ CREATE INDEX IF NOT EXISTS products_part_number_idx ON products (LOWER(part_numb
 CREATE SEQUENCE IF NOT EXISTS bill_number_seq START WITH 1001;
 
 CREATE TABLE IF NOT EXISTS bills (
-  id             SERIAL PRIMARY KEY,
-  bill_number    BIGINT        NOT NULL UNIQUE DEFAULT nextval('bill_number_seq'),
-  customer_name  VARCHAR(100),
-  subtotal       NUMERIC(12,2) NOT NULL CHECK (subtotal >= 0),
-  discount       NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
-  grand_total    NUMERIC(12,2) NOT NULL CHECK (grand_total >= 0),
-  created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+  id               SERIAL PRIMARY KEY,
+  bill_number      BIGINT        NOT NULL UNIQUE DEFAULT nextval('bill_number_seq'),
+  customer_name    VARCHAR(100),
+  subtotal         NUMERIC(12,2) NOT NULL CHECK (subtotal >= 0),
+  discount         NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+  grand_total      NUMERIC(12,2) NOT NULL CHECK (grand_total >= 0),
+  payment_method   VARCHAR(20)   NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'account')),
+  payment_account  VARCHAR(100),
+  created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_method  VARCHAR(20)  NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'account'));
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_account VARCHAR(100);
 CREATE INDEX IF NOT EXISTS bills_created_at_idx ON bills (created_at DESC);
 
 CREATE TABLE IF NOT EXISTS bill_items (

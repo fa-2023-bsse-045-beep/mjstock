@@ -20,6 +20,7 @@
   const filterCashier = document.getElementById('filterCashier');
   const purposeRows   = document.getElementById('purposeRows');
   const cashierRows   = document.getElementById('cashierRows');
+  const accountRows   = document.getElementById('accountRows');
   const expenseRows   = document.getElementById('expenseRows');
   const loadMoreWrap  = document.getElementById('loadMoreWrap');
   const loadMoreBtn   = document.getElementById('loadMoreBtn');
@@ -29,6 +30,9 @@
   const statExpCount  = document.getElementById('statExpCount');
   const statBalance   = document.getElementById('statBalance');
   const statBalanceTile = document.getElementById('statBalanceTile');
+  const statCashInHand = document.getElementById('statCashInHand');
+  const statCashInHandTile = document.getElementById('statCashInHandTile');
+  const statCashInHandSub = document.getElementById('statCashInHandSub');
 
   // ── Init filter pickers ──────────────────────────────────────────────
   filterMonth.value = month;
@@ -64,18 +68,29 @@
       return;
     }
 
-    const { expenses, summary, byPurpose, byCashier, hasMore: more } = data;
+    const { expenses, summary, byPurpose, byCashier, byAccount, hasMore: more } = data;
     hasMore = more;
     offset += expenses.length;
 
     // ── Summary stats ──────────────────────────────────────────────
     statIncome.textContent    = App.money(summary.total_income);
-    statBillCount.textContent = summary.bill_count + ' bill' + (summary.bill_count !== 1 ? 's' : '');
+    statBillCount.textContent = `${summary.bill_count} bills (💵 Cash: ${App.money(summary.cash_income || 0)} · 💳 Online: ${App.money(summary.account_income || 0)})`;
     statExpenses.textContent  = App.money(summary.total_expenses);
     statExpCount.textContent  = summary.expense_count + ' entr' + (summary.expense_count !== 1 ? 'ies' : 'y');
     const bal = Number(summary.balance);
     statBalance.textContent   = App.money(bal);
     statBalanceTile.className = 'stat ' + (bal >= 0 ? 'good' : 'exp-stat');
+
+    if (statCashInHand) {
+      const cashInHand = Number(summary.cash_in_hand ?? (Number(summary.cash_income || 0) - Number(summary.total_expenses || 0)));
+      statCashInHand.textContent = App.money(cashInHand);
+      if (statCashInHandTile) {
+        statCashInHandTile.className = 'stat ' + (cashInHand >= 0 ? 'good' : 'exp-stat');
+      }
+      if (statCashInHandSub) {
+        statCashInHandSub.textContent = `Cash: ${App.money(summary.cash_income || 0)} − Exp: ${App.money(summary.total_expenses || 0)}`;
+      }
+    }
 
     // ── Purpose breakdown ──────────────────────────────────────────
     purposeRows.innerHTML = byPurpose.length
@@ -96,6 +111,18 @@
             <td class="num"><b>${App.money(r.total_expenses)}</b></td>
           </tr>`).join('')
       : '<tr><td colspan="3" class="empty">No expenses this month.</td></tr>';
+
+    // ── Bank / Online Accounts breakdown ───────────────────────────
+    if (accountRows) {
+      accountRows.innerHTML = byAccount && byAccount.length
+        ? byAccount.map((r) => `
+            <tr>
+              <td><span class="badge-account">💳 ${App.esc(r.account_name)}</span></td>
+              <td class="num muted small">${r.count}</td>
+              <td class="num"><b>${App.money(r.total)}</b></td>
+            </tr>`).join('')
+        : '<tr><td colspan="3" class="empty">No account payments this month.</td></tr>';
+    }
 
     // ── Entries table ──────────────────────────────────────────────
     if (!append) expenseRows.innerHTML = '';

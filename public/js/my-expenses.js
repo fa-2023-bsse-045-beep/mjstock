@@ -22,6 +22,9 @@
   const statExpCount  = document.getElementById('statExpCount');
   const statBalance   = document.getElementById('statBalance');
   const statBalanceTile = document.getElementById('statBalanceTile');
+  const statCashInHand = document.getElementById('statCashInHand');
+  const statCashInHandTile = document.getElementById('statCashInHandTile');
+  const statCashInHandSub = document.getElementById('statCashInHandSub');
 
   const expenseForm   = document.getElementById('expenseForm');
   const expAmount     = document.getElementById('expAmount');
@@ -56,12 +59,23 @@
 
     // ── Summary ────────────────────────────────────────────────────
     statIncome.textContent    = App.money(summary.total_income);
-    statBillCount.textContent = summary.bill_count + ' bill' + (summary.bill_count !== 1 ? 's' : '');
+    statBillCount.textContent = `${summary.bill_count} bills (💵 Cash: ${App.money(summary.cash_income || 0)} · 💳 Online: ${App.money(summary.account_income || 0)})`;
     statExpenses.textContent  = App.money(summary.total_expenses);
     statExpCount.textContent  = summary.count + ' entr' + (summary.count !== 1 ? 'ies' : 'y');
     const bal = Number(summary.balance);
     statBalance.textContent   = App.money(bal);
     statBalanceTile.className = 'stat ' + (bal >= 0 ? 'good' : 'exp-stat');
+
+    if (statCashInHand) {
+      const cashInHand = Number(summary.cash_balance ?? (Number(summary.cash_income || 0) - Number(summary.total_expenses || 0)));
+      statCashInHand.textContent = App.money(cashInHand);
+      if (statCashInHandTile) {
+        statCashInHandTile.className = 'stat ' + (cashInHand >= 0 ? 'good' : 'exp-stat');
+      }
+      if (statCashInHandSub) {
+        statCashInHandSub.textContent = `Cash: ${App.money(summary.cash_income || 0)} − Exp: ${App.money(summary.total_expenses || 0)}`;
+      }
+    }
 
     // ── Entries table ──────────────────────────────────────────────
     if (!append) expenseRows.innerHTML = '';

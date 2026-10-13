@@ -78,10 +78,17 @@ router.get('/my', requireApi('owner', 'cashier'), async (req, res) => {
   const ip = [TZ, req.user.id];
   const ic = monthClause(`b.created_at AT TIME ZONE $1`, ip, y, m);
   const income = await query(
-    `SELECT COALESCE(SUM(grand_total), 0) AS total_income, COUNT(*)::int AS bill_count
+    `SELECT COALESCE(SUM(grand_total), 0) AS total_income,
+            COUNT(*)::int AS bill_count,
+            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_income,
+            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income
        FROM bills b WHERE b.created_by = $2 AND ${ic}`,
     ip
   );
+
+  const expTotal = Number(totals.rows[0].total_expenses);
+  const incTotal = Number(income.rows[0].total_income);
+  const cashInc = Number(income.rows[0].cash_income);
 
   res.json({
     expenses: rows.slice(0, PAGE_SIZE),
@@ -89,7 +96,8 @@ router.get('/my', requireApi('owner', 'cashier'), async (req, res) => {
     summary: {
       ...totals.rows[0],
       ...income.rows[0],
-      balance: Number(income.rows[0].total_income) - Number(totals.rows[0].total_expenses),
+      balance: incTotal - expTotal,
+      cash_balance: cashInc - expTotal,
     },
     year: y,
     month: m,
@@ -145,9 +153,26 @@ router.get('/', requireApi('owner'), async (req, res) => {
   const bp = [TZ];
   const bc = monthClause(`created_at AT TIME ZONE $1`, bp, y, m);
   const incomeOverview = await query(
-    `SELECT COALESCE(SUM(grand_total), 0) AS total_income, COUNT(*)::int AS bill_count
+    `SELECT COALESCE(SUM(grand_total), 0) AS total_income,
+            COUNT(*)::int AS bill_count,
+            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_income,
+            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income
        FROM bills WHERE ${bc}`,
     bp
+  );
+
+  // ── Account breakdown (bills paid via bank / online account) ────────
+  const ap = [TZ];
+  const ac = monthClause(`created_at AT TIME ZONE $1`, ap, y, m);
+  const byAccount = await query(
+    `SELECT COALESCE(payment_account, 'Other Account') AS account_name,
+            COALESCE(SUM(grand_total), 0) AS total,
+            COUNT(*)::int AS count
+       FROM bills
+      WHERE payment_method = 'account' AND ${ac}
+      GROUP BY payment_account
+      ORDER BY total DESC`,
+    ap
   );
 
   // ── Purpose breakdown ────────────────────────────────────────────────
@@ -174,6 +199,9 @@ router.get('/', requireApi('owner'), async (req, res) => {
 
   const ei = expenseOverview.rows[0];
   const ii = incomeOverview.rows[0];
+  const expTotal = Number(ei.total_expenses);
+  const incTotal = Number(ii.total_income);
+  const cashInc  = Number(ii.cash_income);
 
   res.json({
     expenses:  rows.slice(0, PAGE_SIZE),
@@ -182,11 +210,15 @@ router.get('/', requireApi('owner'), async (req, res) => {
       total_expenses: ei.total_expenses,
       expense_count:  ei.count,
       total_income:   ii.total_income,
+      cash_income:    ii.cash_income,
+      account_income: ii.account_income,
       bill_count:     ii.bill_count,
-      balance: Number(ii.total_income) - Number(ei.total_expenses),
+      balance:        incTotal - expTotal,
+      cash_in_hand:   cashInc - expTotal,
     },
     byPurpose:  byPurpose.rows,
     byCashier:  byCashier.rows,
+    byAccount:  byAccount.rows,
     year: y,
     month: m,
   });

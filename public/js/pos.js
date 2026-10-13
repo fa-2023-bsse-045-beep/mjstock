@@ -174,11 +174,26 @@
     saveCart();
   }
 
+  function setPaymentMethod(method) {
+    const isCash = method === 'cash';
+    if ($('payCash')) $('payCash').checked = isCash;
+    if ($('payAccount')) $('payAccount').checked = !isCash;
+    if ($('lblCash')) $('lblCash').classList.toggle('active-cash', isCash);
+    if ($('lblAccount')) $('lblAccount').classList.toggle('active-account', !isCash);
+    if ($('accountBox')) $('accountBox').classList.toggle('hidden', isCash);
+    if (isCash) {
+      if ($('paymentAccount')) $('paymentAccount').value = '';
+    } else {
+      if ($('paymentAccount')) setTimeout(() => $('paymentAccount').focus(), 50);
+    }
+  }
+
   function resetCart() {
     cart = [];
     $('customer').value = '';
     $('discount').value = '';
     $('discountType').value = 'amount';
+    setPaymentMethod('cash');
     changed();
   }
 
@@ -189,10 +204,18 @@
       const p = c.product_id ? byId.get(c.product_id) : null;
       if (p && cartQtyFor(p.id) > p.stock_qty) return App.toast(`Only ${p.stock_qty} ${p.name} in stock. Reduce the quantity.`, 'error');
     }
+    const isAccount = $('payAccount') && $('payAccount').checked;
+    const paymentMethod = isAccount ? 'account' : 'cash';
+    const paymentAccount = isAccount ? ($('paymentAccount').value.trim()) : null;
+    if (isAccount && !paymentAccount) {
+      return App.toast('Please specify which account was used (e.g. JazzCash, EasyPaisa, Bank)', 'error');
+    }
     const body = {
       customer_name: $('customer').value.trim(),
       discount_type: $('discountType').value,
       discount_value: $('discount').value || 0,
+      payment_method: paymentMethod,
+      payment_account: paymentAccount,
       items: cart.map((c) =>
         c.product_id
           ? { product_id: c.product_id, quantity: c.qty }
@@ -289,6 +312,16 @@
     resetCart();
   });
   ['customer', 'discount', 'discountType'].forEach((id) => $(id).addEventListener('input', () => { renderCart(); saveCart(); }));
+  if ($('payCash')) $('payCash').addEventListener('change', () => setPaymentMethod('cash'));
+  if ($('payAccount')) $('payAccount').addEventListener('change', () => setPaymentMethod('account'));
+  document.querySelectorAll('.quick-acc-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if ($('paymentAccount')) {
+        $('paymentAccount').value = btn.dataset.acc;
+        $('paymentAccount').focus();
+      }
+    });
+  });
   $('generateBill').addEventListener('click', generateBill);
   document.addEventListener('mj:stock-changed', loadProducts);
 

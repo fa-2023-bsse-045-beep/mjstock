@@ -40,17 +40,25 @@ function readBill(body = {}) {
     ? v.amount(body.discount_value, 'Discount', { max: 100, required: false })
     : v.amount(body.discount_value, 'Discount', { max: 100000000, required: false });
 
+  const paymentMethod = v.oneOf(body.payment_method, 'Payment method', ['cash', 'account'], 'cash');
+  const paymentAccount = paymentMethod === 'account'
+    ? v.text(body.payment_account, 'Account name', { required: true, max: 100 })
+    : null;
+
   return {
     customer_name: v.text(body.customer_name, 'Customer name', { max: 100 }) || null,
     discountType,
     discountValue,
+    paymentMethod,
+    paymentAccount,
     items,
   };
 }
 
 async function loadBill(clientOrPool, id) {
   const b = await clientOrPool.query(
-    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total, b.created_at,
+    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total,
+            b.payment_method, b.payment_account, b.created_at,
             b.created_by, u.name AS cashier_name
        FROM bills b LEFT JOIN users u ON u.id = b.created_by
       WHERE b.id = $1`,
@@ -113,9 +121,9 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
     const grandC = subtotalC - discountC;
 
     const ins = await c.query(
-      `INSERT INTO bills (customer_name, subtotal, discount, grand_total, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id, bill_number`,
-      [input.customer_name, rupees(subtotalC), rupees(discountC), rupees(grandC), req.user.id]
+      `INSERT INTO bills (customer_name, subtotal, discount, grand_total, payment_method, payment_account, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, bill_number`,
+      [input.customer_name, rupees(subtotalC), rupees(discountC), rupees(grandC), input.paymentMethod, input.paymentAccount, req.user.id]
     );
     const { id: billId, bill_number: billNumber } = ins.rows[0];
 
@@ -164,6 +172,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
   const q = v.text(req.query.q, 'Search', { max: 100 });
   const date = req.query.date ? String(req.query.date) : '';
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new v.HttpError(400, 'Invalid date');
+  const paymentMethod = req.query.payment_method ? String(req.query.payment_method) : '';
   const offset = v.integer(req.query.offset || 0, 'Offset', { min: 0, max: 10000000 });
 
   const where = [];
@@ -172,9 +181,9 @@ router.get('/', requireApi('owner'), async (req, res) => {
     const digits = q.replace(/^#/, '');
     if (/^\d{1,15}$/.test(digits)) {
       params.push(Number(digits));
-      where.push(`(b.bill_number = $${params.length} OR b.customer_name ILIKE $${params.length + 1})`);
+      where.push(`(b.bill_number = $${params.length} OR b.customer_name ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
     } else {
-      where.push(`b.customer_name ILIKE $${params.length + 1}`);
+      where.push(`(b.customer_name ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
     }
     params.push(`%${q.replace(/[\\%_]/g, (m) => '\\' + m)}%`);
   }
@@ -182,10 +191,15 @@ router.get('/', requireApi('owner'), async (req, res) => {
     params.push(date);
     where.push(`(b.created_at AT TIME ZONE $1)::date = $${params.length}::date`);
   }
+  if (paymentMethod && ['cash', 'account'].includes(paymentMethod)) {
+    params.push(paymentMethod);
+    where.push(`b.payment_method = $${params.length}`);
+  }
   params.push(PAGE_SIZE + 1, offset);
 
   const { rows } = await query(
-    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total, b.created_at,
+    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total,
+            b.payment_method, b.payment_account, b.created_at,
             u.name AS cashier_name,
             (SELECT COALESCE(SUM(quantity), 0) FROM bill_items bi WHERE bi.bill_id = b.id)::int AS item_count,
             to_char(b.created_at AT TIME ZONE $1, 'YYYY-MM-DD') AS local_date
@@ -197,7 +211,10 @@ router.get('/', requireApi('owner'), async (req, res) => {
   );
 
   const today = await query(
-    `SELECT COALESCE(SUM(grand_total), 0) AS total, COUNT(*)::int AS count
+    `SELECT COALESCE(SUM(grand_total), 0) AS total,
+            COUNT(*)::int AS count,
+            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_total,
+            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_total
        FROM bills WHERE (created_at AT TIME ZONE $1)::date = (NOW() AT TIME ZONE $1)::date`,
     [TZ]
   );
