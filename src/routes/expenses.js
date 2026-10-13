@@ -15,17 +15,25 @@ function currentYearMonth() {
 }
 
 function validateYearMonth(year, month) {
-  const y = v.integer(year, 'Year', { min: 2000, max: 2100 });
-  const m = v.integer(month, 'Month', { min: 1, max: 12 });
+  const y = v.integer(year,  'Year',  { min: 2000, max: 2100 });
+  const m = v.integer(month, 'Month', { min: 1,    max: 12   });
   return { y, m };
 }
 
+// Reliable month filter — EXTRACT works perfectly with $n params.
+// Returns the WHERE clause fragment and adds y, m to params array.
+function monthClause(col, params, y, m) {
+  params.push(y, m);
+  const pi = params.length;
+  return `(EXTRACT(YEAR  FROM ${col})::int = $${pi - 1}
+      AND  EXTRACT(MONTH FROM ${col})::int = $${pi})`;
+}
+
 // ── POST /api/expenses  (cashier OR owner) ─────────────────────────────────
-// Add an expense entry. Once submitted it is locked — no edit or delete.
 router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
-  const amount  = v.amount(req.body.amount, 'Amount', { max: 100000000 });
-  const purpose = v.text(req.body.purpose, 'Purpose', { required: true, max: 150 });
-  const notes   = v.text(req.body.notes,   'Notes',   { required: false, max: 1000 }) || null;
+  const amount  = v.amount(req.body.amount,  'Amount',  { min: 0.01, max: 100000000 });
+  const purpose = v.text(req.body.purpose,   'Purpose', { required: true,  max: 150  });
+  const notes   = v.text(req.body.notes,     'Notes',   { required: false, max: 1000 }) || null;
 
   const { rows } = await query(
     `INSERT INTO expenses (amount, purpose, notes, created_by)
@@ -38,48 +46,46 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
 });
 
 // ── GET /api/expenses/my  (cashier OR owner — own entries only) ───────────
-// The cashier's personal history. Supports ?year=&month=&offset=
 router.get('/my', requireApi('owner', 'cashier'), async (req, res) => {
-  const ym    = currentYearMonth();
-  const year  = req.query.year  ? Number(req.query.year)  : ym.year;
-  const month = req.query.month ? Number(req.query.month) : ym.month;
+  const ym     = currentYearMonth();
+  const year   = req.query.year  ? Number(req.query.year)  : ym.year;
+  const month  = req.query.month ? Number(req.query.month) : ym.month;
   const { y, m } = validateYearMonth(year, month);
   const offset = v.integer(req.query.offset || 0, 'Offset', { min: 0, max: 10000000 });
 
+  // ── Own entries ──────────────────────────────────────────────────────
+  const eParams = [TZ, req.user.id];
+  const eClause = monthClause(`e.created_at AT TIME ZONE $1`, eParams, y, m);
   const { rows } = await query(
     `SELECT e.id, e.amount, e.purpose, e.notes, e.created_at
        FROM expenses e
-      WHERE e.created_by = $1
-        AND date_trunc('month', e.created_at AT TIME ZONE $2) =
-            date_trunc('month', make_timestamptz($3, $4, 1, 0, 0, 0) AT TIME ZONE $2)
+      WHERE e.created_by = $2 AND ${eClause}
       ORDER BY e.created_at DESC, e.id DESC
-      LIMIT $5 OFFSET $6`,
-    [req.user.id, TZ, y, m, PAGE_SIZE + 1, offset]
+      LIMIT $${eParams.push(PAGE_SIZE + 1) && eParams.length} OFFSET $${eParams.push(offset) && eParams.length}`,
+    eParams
   );
 
-  // Monthly totals for this user
+  // ── Monthly expense totals ─────────────────────────────────────────
+  const tp = [TZ, req.user.id];
+  const tc = monthClause(`e.created_at AT TIME ZONE $1`, tp, y, m);
   const totals = await query(
     `SELECT COALESCE(SUM(amount), 0) AS total_expenses, COUNT(*)::int AS count
-       FROM expenses
-      WHERE created_by = $1
-        AND date_trunc('month', created_at AT TIME ZONE $2) =
-            date_trunc('month', make_timestamptz($3, $4, 1, 0, 0, 0) AT TIME ZONE $2)`,
-    [req.user.id, TZ, y, m]
+       FROM expenses e WHERE e.created_by = $2 AND ${tc}`,
+    tp
   );
 
-  // Monthly income for this user (bills they created)
+  // ── Monthly income (bills this cashier created) ────────────────────
+  const ip = [TZ, req.user.id];
+  const ic = monthClause(`b.created_at AT TIME ZONE $1`, ip, y, m);
   const income = await query(
     `SELECT COALESCE(SUM(grand_total), 0) AS total_income, COUNT(*)::int AS bill_count
-       FROM bills
-      WHERE created_by = $1
-        AND date_trunc('month', created_at AT TIME ZONE $2) =
-            date_trunc('month', make_timestamptz($3, $4, 1, 0, 0, 0) AT TIME ZONE $2)`,
-    [req.user.id, TZ, y, m]
+       FROM bills b WHERE b.created_by = $2 AND ${ic}`,
+    ip
   );
 
   res.json({
     expenses: rows.slice(0, PAGE_SIZE),
-    hasMore: rows.length > PAGE_SIZE,
+    hasMore:  rows.length > PAGE_SIZE,
     summary: {
       ...totals.rows[0],
       ...income.rows[0],
@@ -90,85 +96,88 @@ router.get('/my', requireApi('owner', 'cashier'), async (req, res) => {
   });
 });
 
-// ── GET /api/expenses  (owner only) — all entries with filters ────────────
+// ── GET /api/expenses  (owner only) ─────────────────────────────────────
 router.get('/', requireApi('owner'), async (req, res) => {
-  const ym    = currentYearMonth();
-  const year  = req.query.year  ? Number(req.query.year)  : ym.year;
-  const month = req.query.month ? Number(req.query.month) : ym.month;
+  const ym     = currentYearMonth();
+  const year   = req.query.year  ? Number(req.query.year)  : ym.year;
+  const month  = req.query.month ? Number(req.query.month) : ym.month;
   const { y, m } = validateYearMonth(year, month);
   const offset    = v.integer(req.query.offset || 0, 'Offset', { min: 0, max: 10000000 });
   const q         = v.text(req.query.q, 'Search', { max: 100 }) || '';
   const cashierId = req.query.cashier_id ? v.id(req.query.cashier_id, 'Cashier') : null;
 
-  const params  = [TZ, y, m];
-  const where   = [
-    `date_trunc('month', e.created_at AT TIME ZONE $1) =
-     date_trunc('month', make_timestamptz($2, $3, 1, 0, 0, 0) AT TIME ZONE $1)`,
-  ];
+  // ── Entry list ───────────────────────────────────────────────────────
+  const listParams = [TZ];
+  const listWhere  = [monthClause(`e.created_at AT TIME ZONE $1`, listParams, y, m)];
 
   if (q) {
-    params.push(`%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
-    where.push(`(e.purpose ILIKE $${params.length} OR u.name ILIKE $${params.length})`);
+    const safe = `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+    listParams.push(safe);
+    listWhere.push(`(e.purpose ILIKE $${listParams.length} OR u.name ILIKE $${listParams.length})`);
   }
   if (cashierId) {
-    params.push(cashierId);
-    where.push(`e.created_by = $${params.length}`);
+    listParams.push(cashierId);
+    listWhere.push(`e.created_by = $${listParams.length}`);
   }
-
-  params.push(PAGE_SIZE + 1, offset);
+  listParams.push(PAGE_SIZE + 1, offset);
 
   const { rows } = await query(
     `SELECT e.id, e.amount, e.purpose, e.notes, e.created_at,
             e.created_by, u.name AS cashier_name
        FROM expenses e
        JOIN users u ON u.id = e.created_by
-      WHERE ${where.join(' AND ')}
+      WHERE ${listWhere.join(' AND ')}
       ORDER BY e.created_at DESC, e.id DESC
-      LIMIT $${params.length - 1} OFFSET $${params.length}`,
-    params
+      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams
   );
 
-  // ── Monthly overview ──────────────────────────────────────────────────
-  const overviewParams = [TZ, y, m];
-  const overviewWhere  = [
-    `date_trunc('month', created_at AT TIME ZONE $1) =
-     date_trunc('month', make_timestamptz($2, $3, 1, 0, 0, 0) AT TIME ZONE $1)`,
-  ];
+  // ── Overview totals ─────────────────────────────────────────────────
+  const op = [TZ];
+  const oc = monthClause(`created_at AT TIME ZONE $1`, op, y, m);
+
   const expenseOverview = await query(
     `SELECT COALESCE(SUM(amount), 0) AS total_expenses, COUNT(*)::int AS count
-       FROM expenses WHERE ${overviewWhere.join(' AND ')}`,
-    overviewParams
+       FROM expenses WHERE ${oc}`,
+    op
   );
+
+  const bp = [TZ];
+  const bc = monthClause(`created_at AT TIME ZONE $1`, bp, y, m);
   const incomeOverview = await query(
     `SELECT COALESCE(SUM(grand_total), 0) AS total_income, COUNT(*)::int AS bill_count
-       FROM bills WHERE ${overviewWhere.join(' AND ')}`,
-    overviewParams
+       FROM bills WHERE ${bc}`,
+    bp
   );
 
-  // ── Purpose breakdown ─────────────────────────────────────────────────
+  // ── Purpose breakdown ────────────────────────────────────────────────
+  const pp = [TZ];
+  const pc = monthClause(`created_at AT TIME ZONE $1`, pp, y, m);
   const byPurpose = await query(
     `SELECT purpose, COALESCE(SUM(amount), 0) AS total, COUNT(*)::int AS count
-       FROM expenses WHERE ${overviewWhere.join(' AND ')}
+       FROM expenses WHERE ${pc}
       GROUP BY purpose ORDER BY total DESC`,
-    overviewParams
+    pp
   );
 
-  // ── Cashier-wise breakdown ────────────────────────────────────────────
+  // ── Cashier breakdown ────────────────────────────────────────────────
+  const cp = [TZ];
+  const cc = monthClause(`e.created_at AT TIME ZONE $1`, cp, y, m);
   const byCashier = await query(
     `SELECT e.created_by, u.name AS cashier_name,
             COALESCE(SUM(e.amount), 0) AS total_expenses, COUNT(*)::int AS count
        FROM expenses e JOIN users u ON u.id = e.created_by
-      WHERE ${overviewWhere.join(' AND ')}
+      WHERE ${cc}
       GROUP BY e.created_by, u.name ORDER BY total_expenses DESC`,
-    overviewParams
+    cp
   );
 
   const ei = expenseOverview.rows[0];
   const ii = incomeOverview.rows[0];
 
   res.json({
-    expenses: rows.slice(0, PAGE_SIZE),
-    hasMore:  rows.length > PAGE_SIZE,
+    expenses:  rows.slice(0, PAGE_SIZE),
+    hasMore:   rows.length > PAGE_SIZE,
     summary: {
       total_expenses: ei.total_expenses,
       expense_count:  ei.count,
@@ -183,7 +192,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
   });
 });
 
-// ── GET /api/expenses/:id  (owner: any; cashier: own only) ────────────────
+// ── GET /api/expenses/:id  (owner: any; cashier: own only) ─────────────────
 router.get('/:id', requireApi('owner', 'cashier'), async (req, res) => {
   const id = v.id(req.params.id);
   const { rows } = await query(
@@ -202,6 +211,5 @@ router.get('/:id', requireApi('owner', 'cashier'), async (req, res) => {
 });
 
 // ── No PUT / DELETE routes — entries are permanent by design ───────────────
-// Any attempt to PUT/DELETE will fall through to the 404 handler in app.js.
 
 module.exports = router;
