@@ -12,7 +12,7 @@ const PAGE_SIZE = 50;
 const cents = (n) => Math.round(n * 100);
 const rupees = (c) => c / 100;
 
-function readBill(body = {}) {
+function readBill(body = {}, allowPriceOverride = false) {
   if (!Array.isArray(body.items) || body.items.length === 0) throw new v.HttpError(400, 'Cart is empty');
   if (body.items.length > 200) throw new v.HttpError(400, 'Too many items on one bill');
 
@@ -20,10 +20,15 @@ function readBill(body = {}) {
     if (!it || typeof it !== 'object') throw new v.HttpError(400, `Item ${i + 1} is invalid`);
     const quantity = v.integer(it.quantity, `Quantity of item ${i + 1}`, { min: 1, max: 100000 });
     if (it.product_id !== undefined && it.product_id !== null) {
+      const price = (allowPriceOverride && it.price !== undefined && it.price !== null)
+        ? v.amount(it.price, `Price of item ${i + 1}`, { max: 10000000 })
+        : null;
       return {
         product_id: v.id(it.product_id, 'Product'),
         quantity,
+        name: v.text(it.name, `Name of item ${i + 1}`, { required: false, max: 150 }) || null,
         part_number: v.text(it.part_number, 'Part number', { required: false, max: 100 }) || null,
+        price,
       };
     }
     return {
@@ -233,6 +238,166 @@ router.get('/:id', requireApi('owner', 'cashier'), async (req, res) => {
     throw new v.HttpError(404, 'Bill not found');
   }
   res.json({ bill });
+});
+
+// Update a bill: recalculates items, prices, discounts, and adjusts stock deltas (owner only).
+router.put('/:id', requireApi('owner'), async (req, res) => {
+  const billId = v.id(req.params.id);
+  const input = readBill(req.body, true);
+
+  const { bill, alerts } = await withTransaction(async (c) => {
+    // 1. Lock bill
+    const b = await c.query('SELECT id, bill_number FROM bills WHERE id = $1 FOR UPDATE', [billId]);
+    if (!b.rows.length) throw new v.HttpError(404, 'Bill not found');
+    const billNumber = b.rows[0].bill_number;
+
+    // 2. Fetch existing items with product_id
+    const oldItemsRes = await c.query(
+      `SELECT product_id, SUM(quantity)::int AS qty
+         FROM bill_items
+        WHERE bill_id = $1 AND product_id IS NOT NULL
+        GROUP BY product_id`,
+      [billId]
+    );
+    const oldQtyMap = new Map();
+    for (const r of oldItemsRes.rows) {
+      oldQtyMap.set(r.product_id, r.qty);
+    }
+
+    // 3. New quantities per product
+    const newQtyMap = new Map();
+    for (const it of input.items) {
+      if (it.product_id) {
+        newQtyMap.set(it.product_id, (newQtyMap.get(it.product_id) || 0) + it.quantity);
+      }
+    }
+
+    // 4. Union of all product IDs to lock
+    const allProductIds = [...new Set([...oldQtyMap.keys(), ...newQtyMap.keys()])].sort((a, b) => a - b);
+    const products = new Map();
+    if (allProductIds.length) {
+      const { rows } = await c.query(
+        'SELECT id, name, part_number, price, stock_qty, min_stock FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+        [allProductIds]
+      );
+      rows.forEach((p) => products.set(p.id, p));
+    }
+
+    // Ensure all currently selected products exist
+    for (const pid of newQtyMap.keys()) {
+      if (!products.has(pid)) {
+        throw new v.HttpError(409, 'A product selected for this bill no longer exists in inventory.');
+      }
+    }
+
+    // 5. Stock reconciliation
+    const alerts = [];
+    for (const pid of allProductIds) {
+      const oldQty = oldQtyMap.get(pid) || 0;
+      const newQty = newQtyMap.get(pid) || 0;
+      const delta = newQty - oldQty; // >0 means more sold, <0 means returned
+
+      const p = products.get(pid);
+      if (!p) continue; // If old product was deleted, skip returning stock to it
+
+      if (delta > 0) {
+        if (p.stock_qty < delta) {
+          throw new v.HttpError(409, `Only ${p.stock_qty} more of ${p.name} available in stock (needed ${delta} additional)`);
+        }
+        const upd = await c.query(
+          'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2 RETURNING id, name, stock_qty, min_stock',
+          [delta, pid]
+        );
+        await c.query(
+          `INSERT INTO stock_movements (product_id, change_qty, reason, note, bill_id, user_id)
+           VALUES ($1, $2, 'sale', $3, $4, $5)`,
+          [pid, -delta, `Bill #${billNumber} updated - added qty`, billId, req.user.id]
+        );
+        const updatedP = upd.rows[0];
+        const status = stockStatus(updatedP.stock_qty, updatedP.min_stock);
+        if (status !== 'ok') alerts.push({ ...updatedP, status });
+      } else if (delta < 0) {
+        const returnedQty = -delta;
+        await c.query(
+          'UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2',
+          [returnedQty, pid]
+        );
+        await c.query(
+          `INSERT INTO stock_movements (product_id, change_qty, reason, note, bill_id, user_id)
+           VALUES ($1, $2, 'adjustment', $3, $4, $5)`,
+          [pid, returnedQty, `Bill #${billNumber} updated - returned qty`, billId, req.user.id]
+        );
+      }
+    }
+
+    // 6. Build lines
+    const lines = input.items.map((it) => {
+      const p = it.product_id ? products.get(it.product_id) : null;
+      const priceVal = (it.price !== undefined && it.price !== null)
+        ? it.price
+        : (p ? p.price : it.price);
+      const priceC = cents(priceVal);
+      return {
+        product_id: it.product_id,
+        name: it.name || (p ? p.name : 'Item'),
+        part_number: it.part_number !== undefined && it.part_number !== null ? it.part_number : (p ? p.part_number : null),
+        priceC,
+        quantity: it.quantity,
+        totalC: priceC * it.quantity,
+      };
+    });
+
+    const subtotalC = lines.reduce((s, l) => s + l.totalC, 0);
+    let discountC = input.discountType === 'percent'
+      ? Math.round((subtotalC * input.discountValue) / 100)
+      : cents(input.discountValue);
+    discountC = Math.min(discountC, subtotalC);
+    const grandC = subtotalC - discountC;
+
+    // 7. Replace bill_items
+    await c.query('DELETE FROM bill_items WHERE bill_id = $1', [billId]);
+    await c.query(
+      `INSERT INTO bill_items (bill_id, product_id, item_name, part_number, price, quantity, line_total)
+       SELECT $1::int, * FROM unnest($2::int[], $3::text[], $4::text[], $5::numeric[], $6::int[], $7::numeric[])`,
+      [
+        billId,
+        lines.map((l) => l.product_id),
+        lines.map((l) => l.name),
+        lines.map((l) => l.part_number),
+        lines.map((l) => rupees(l.priceC)),
+        lines.map((l) => l.quantity),
+        lines.map((l) => rupees(l.totalC)),
+      ]
+    );
+
+    // 8. Update bills table
+    await c.query(
+      `UPDATE bills
+          SET customer_name = $1,
+              subtotal = $2,
+              discount = $3,
+              grand_total = $4,
+              payment_method = $5,
+              payment_account = $6
+        WHERE id = $7`,
+      [
+        input.customer_name,
+        rupees(subtotalC),
+        rupees(discountC),
+        rupees(grandC),
+        input.paymentMethod,
+        input.paymentAccount,
+        billId,
+      ]
+    );
+
+    return { bill: await loadBill(c, billId), alerts };
+  });
+
+  const pending = notifyLowStock(alerts);
+  if (process.env.VERCEL) await pending;
+
+  res.json({ bill, alerts, message: 'Bill updated successfully' });
 });
 
 // Delete a bill and give the stock back (owner only).

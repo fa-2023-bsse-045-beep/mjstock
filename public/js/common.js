@@ -113,14 +113,14 @@
 
   // ---------- Header, nav, bell ----------
   const NAV = [
-    { href: '/dashboard',   label: 'Dashboard',        key: 'dashboard',    owner: true  },
-    { href: '/pos',         label: 'New Bill',          key: 'pos'                        },
-    { href: '/products',    label: 'Products',          key: 'products',     owner: true  },
-    { href: '/stock',       label: 'Stock Report',      key: 'stock',        owner: true  },
-    { href: '/bills',       label: 'Bill History',      key: 'bills',        owner: true  },
-    { href: '/expenses',    label: 'Monthly Records',   key: 'expenses',     owner: true  },
-    { href: '/my-expenses', label: 'My Expenses',       key: 'my-expenses',  cashier: true },
-    { href: '/users',       label: 'Users',             key: 'users',        owner: true  },
+    { href: '/dashboard', label: 'Dashboard', key: 'dashboard', owner: true },
+    { href: '/pos', label: 'New Bill', key: 'pos' },
+    { href: '/products', label: 'Products', key: 'products', owner: true },
+    { href: '/stock', label: 'Stock Report', key: 'stock', owner: true },
+    { href: '/bills', label: 'Bill History', key: 'bills', owner: true },
+    { href: '/expenses', label: 'Monthly Records', key: 'expenses', owner: true },
+    { href: '/my-expenses', label: 'My Expenses', key: 'my-expenses', cashier: true },
+    { href: '/users', label: 'Users', key: 'users', owner: true },
   ];
   const BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 
@@ -128,10 +128,10 @@
     const header = document.getElementById('appHeader');
     header.className = 'app-header';
     const links = NAV.filter((n) => {
-        if (n.owner   && App.user.role !== 'owner')   return false;
-        if (n.cashier && App.user.role !== 'cashier') return false;
-        return true;
-      })
+      if (n.owner && App.user.role !== 'owner') return false;
+      if (n.cashier && App.user.role !== 'cashier') return false;
+      return true;
+    })
       .map((n) => `<a href="${n.href}" class="${n.key === active ? 'active' : ''}">${n.label}</a>`)
       .join('');
     header.innerHTML = `
@@ -154,7 +154,7 @@
 
     document.getElementById('navToggle').addEventListener('click', () => document.getElementById('mainNav').classList.toggle('open'));
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      try { await App.api('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+      try { await App.api('/api/auth/logout', { method: 'POST' }); } catch (_) { }
       location.href = '/login';
     });
 
@@ -187,14 +187,14 @@
     const isOwner = App.user.role === 'owner';
     list.innerHTML = App.alerts.length
       ? App.alerts
-          .map((p) => {
-            const tag = isOwner ? 'button' : 'div';
-            return `<${tag} class="bell-item" data-id="${p.id}" ${isOwner ? 'title="Click to restock"' : ''}>
+        .map((p) => {
+          const tag = isOwner ? 'button' : 'div';
+          return `<${tag} class="bell-item" data-id="${p.id}" ${isOwner ? 'title="Click to restock"' : ''}>
                 <span><b>${App.esc(p.name)}</b>${p.part_number ? ` <span class="muted small" style="font-family:monospace">(${App.esc(p.part_number)})</span>` : ''}<br><span class="small muted">Stock ${p.stock_qty} · Min ${p.min_stock}</span></span>
                 ${App.statusBadge(p.status)}
               </${tag}>`;
-          })
-          .join('')
+        })
+        .join('')
       : '<div class="bell-empty">All products are well stocked.</div>';
     if (isOwner) {
       list.querySelectorAll('button.bell-item').forEach((b) =>
@@ -335,7 +335,7 @@
           <div class="sub">Auto Parts &amp; Accessories</div>
           ${shop.address ? `<div class="sub">${App.esc(shop.address)}</div>` : ''}
           <div class="bill-contacts">
-            <span>Hafiz Qamar Raza: <b>03008498742</b></span>
+            <span>Hafiz Qamar: <b>03008498742</b></span>
             <span class="contact-sep">·</span>
             <span>Ch Ahsan: <b>03083412615</b></span>
           </div>
@@ -397,20 +397,413 @@
 
   App.showBill = function (bill, { onClose, title } = {}) {
     const last = localStorage.getItem('mj_print_size') || '80mm';
+    const isOwner = App.user && App.user.role === 'owner';
     const d = App.dialog({
       title: title || `Bill #${bill.bill_number}`,
       wide: true,
       body: App.billHtml(bill),
       foot: `
+        ${isOwner ? `<button type="button" class="btn btn-primary" data-edit-bill style="margin-right:auto">✏️ Edit Bill</button>` : ''}
         <button class="btn ${last === 'A4' ? 'btn-primary' : 'btn-dark'}" data-print="A4">Print A4</button>
         <button class="btn ${last === '80mm' ? 'btn-primary' : 'btn-dark'}" data-print="80mm">Print Receipt (80mm)</button>
         <button class="btn" data-close>Close</button>`,
       onClose,
     });
+    if (isOwner) {
+      const editBtn = d.querySelector('[data-edit-bill]');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          d.close();
+          App.openEditBill(bill, (updated) => App.showBill(updated));
+        });
+      }
+    }
     d.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => App.printBill(bill, b.dataset.print)));
     d.querySelector('[data-close]').addEventListener('click', () => d.close());
     d.querySelector(`[data-print="${last}"]`).focus();
     return d;
+  };
+
+  // ---------- Edit Bill (owner) ----------
+  App.openEditBill = async function (bill, onSaved) {
+    if (!bill) return;
+
+    let productsList = [];
+    try {
+      const res = await App.api('/api/products');
+      productsList = res.products || [];
+    } catch (_) { }
+
+    let editItems = (bill.items || []).map((it, idx) => ({
+      key: 'item_' + Date.now() + '_' + idx,
+      product_id: it.product_id || null,
+      name: it.item_name || it.name || 'Item',
+      part_number: it.part_number || '',
+      price: Number(it.price) || 0,
+      quantity: Number(it.quantity) || 1,
+    }));
+
+    let curCustomer = bill.customer_name || '';
+    let curPaymentMethod = bill.payment_method || 'cash';
+    let curPaymentAccount = bill.payment_account || '';
+    let curDiscountType = 'amount';
+    let curDiscountValue = Number(bill.discount) || 0;
+
+    const renderItemsHtml = () => {
+      if (!editItems.length) {
+        return '<tr><td colspan="5" class="empty">No items on this bill. Add an item below.</td></tr>';
+      }
+      return editItems.map((it) => {
+        const lineTotal = (Math.round(it.price * 100) * it.quantity) / 100;
+        return `
+          <tr data-key="${it.key}">
+            <td>
+              <b>${App.esc(it.name)}</b>
+              ${it.part_number ? ` <span class="muted small" style="font-family:monospace">(${App.esc(it.part_number)})</span>` : ''}
+              ${!it.product_id ? ' <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.7rem">Manual</span>' : ''}
+            </td>
+            <td style="width:110px">
+              <input type="number" min="0" step="any" class="edit-price-input" data-price-key="${it.key}" value="${it.price}">
+            </td>
+            <td style="width:130px">
+              <div class="edit-qty-group">
+                <button type="button" class="edit-qty-btn" data-qty-dec="${it.key}">−</button>
+                <input type="number" min="1" max="100000" class="edit-qty-input" data-qty-key="${it.key}" value="${it.quantity}">
+                <button type="button" class="edit-qty-btn" data-qty-inc="${it.key}">+</button>
+              </div>
+            </td>
+            <td class="num nowrap" data-total-key="${it.key}">
+              <b>${App.money(lineTotal)}</b>
+            </td>
+            <td class="actions" style="width:40px">
+              <button type="button" class="btn btn-sm btn-danger" data-remove-key="${it.key}" title="Remove item" style="padding:0 7px;font-size:1rem;line-height:24px">&times;</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const productOptionsHtml = productsList.map((p) => {
+      const part = p.part_number ? ` [${p.part_number}]` : '';
+      return `<option value="${p.id}" data-price="${p.price}" data-name="${App.esc(p.name)}" data-part="${App.esc(p.part_number || '')}">${App.esc(p.name)}${part} · Stock: ${p.stock_qty} · Rs. ${p.price}</option>`;
+    }).join('');
+
+    const bodyHtml = `
+      <div class="form-error hidden" id="editBillError"></div>
+      <div class="edit-bill-meta">
+        <div>
+          <b>Bill #${bill.bill_number}</b> · Cashier: <b>${App.esc(bill.cashier_name || 'Owner')}</b>
+        </div>
+        <div class="muted small">
+          Created: ${App.time(bill.created_at)}
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:.5rem">
+        <div class="field" style="flex:2">
+          <label for="editCustomerName">Customer Name</label>
+          <input id="editCustomerName" maxlength="100" placeholder="Walk-in customer" value="${App.esc(curCustomer)}">
+        </div>
+        <div class="field" style="flex:1">
+          <label>Payment Method</label>
+          <div style="display:flex;gap:.5rem;margin-top:.2rem">
+            <label class="pay-option ${curPaymentMethod === 'cash' ? 'active-cash' : ''}" style="flex:1;display:flex;align-items:center;gap:.35rem;padding:.45rem .6rem;margin:0;border:1px solid #cfd4dd;border-radius:8px;cursor:pointer">
+              <input type="radio" name="editPayMethod" value="cash" ${curPaymentMethod === 'cash' ? 'checked' : ''}> Cash
+            </label>
+            <label class="pay-option ${curPaymentMethod === 'account' ? 'active-account' : ''}" style="flex:1;display:flex;align-items:center;gap:.35rem;padding:.45rem .6rem;margin:0;border:1px solid #cfd4dd;border-radius:8px;cursor:pointer">
+              <input type="radio" name="editPayMethod" value="account" ${curPaymentMethod === 'account' ? 'checked' : ''}> Account
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field ${curPaymentMethod === 'account' ? '' : 'hidden'}" id="editAccountWrap" style="margin-bottom:.75rem">
+        <label for="editPaymentAccount">Account / Bank / Wallet Name</label>
+        <input id="editPaymentAccount" maxlength="100" placeholder="e.g. JazzCash, EasyPaisa, HBL" value="${App.esc(curPaymentAccount)}">
+        <div style="display:flex;gap:.35rem;margin-top:.35rem;flex-wrap:wrap">
+          <button type="button" class="quick-acc-btn" data-acc="JazzCash">JazzCash</button>
+          <button type="button" class="quick-acc-btn" data-acc="EasyPaisa">EasyPaisa</button>
+          <button type="button" class="quick-acc-btn" data-acc="HBL">HBL</button>
+          <button type="button" class="quick-acc-btn" data-acc="Meezan Bank">Meezan Bank</button>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc;padding:.65rem;border-radius:var(--radius);border:1px solid var(--line);margin:.6rem 0">
+        <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:2;min-width:180px">
+            <label for="editProductSelect" style="margin-bottom:.2rem">Add Product from Catalog</label>
+            <select id="editProductSelect">
+              <option value="">-- Choose a product to add --</option>
+              ${productOptionsHtml}
+            </select>
+          </div>
+          <button type="button" class="btn btn-dark" id="editAddProductBtn">+ Add Product</button>
+          <button type="button" class="btn" id="editAddManualBtn">+ Manual Item</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px">
+        <table class="edit-items-table">
+          <thead>
+            <tr>
+              <th>Item / Part #</th>
+              <th>Price (Rs.)</th>
+              <th>Quantity</th>
+              <th class="num">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="editItemsTbody">
+            ${renderItemsHtml()}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row" style="margin-top:.8rem;align-items:flex-start">
+        <div class="field" style="flex:1">
+          <label>Discount</label>
+          <div class="discount-row">
+            <select id="editDiscountType" style="width:85px">
+              <option value="amount" ${curDiscountType === 'amount' ? 'selected' : ''}>Rs.</option>
+              <option value="percent" ${curDiscountType === 'percent' ? 'selected' : ''}>%</option>
+            </select>
+            <input type="number" id="editDiscountVal" min="0" step="any" placeholder="0" value="${curDiscountValue}">
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:200px">
+          <div class="edit-totals-card">
+            <div class="edit-totals-row">
+              <span class="muted">Subtotal:</span>
+              <span id="editSubtotalDisplay">…</span>
+            </div>
+            <div class="edit-totals-row">
+              <span class="muted">Discount:</span>
+              <span id="editDiscountDisplay" style="color:var(--brand)">…</span>
+            </div>
+            <div class="edit-totals-row grand">
+              <span>Grand Total:</span>
+              <span id="editGrandDisplay">…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const footHtml = `
+      <button type="button" class="btn" data-cancel>Cancel</button>
+      <button type="button" class="btn btn-primary" data-save-bill>Save Changes</button>
+    `;
+
+    const d = App.dialog({
+      title: `Edit Bill #${bill.bill_number}`,
+      wide: true,
+      body: bodyHtml,
+      foot: footHtml,
+    });
+
+    const tbody = d.querySelector('#editItemsTbody');
+    const errBox = d.querySelector('#editBillError');
+
+    const calcTotals = () => {
+      const subtotal = editItems.reduce((s, it) => s + (Math.round(it.price * 100) * it.quantity), 0) / 100;
+      const dVal = Math.max(0, Number(d.querySelector('#editDiscountVal').value) || 0);
+      const dType = d.querySelector('#editDiscountType').value;
+      let discount = dType === 'percent' ? Math.round((subtotal * Math.min(dVal, 100)) / 100) : dVal;
+      discount = Math.min(discount, subtotal);
+      const grand = Math.max(0, subtotal - discount);
+      return { subtotal, discount, grand };
+    };
+
+    const updateTotalsUi = () => {
+      const t = calcTotals();
+      d.querySelector('#editSubtotalDisplay').textContent = App.money(t.subtotal);
+      d.querySelector('#editDiscountDisplay').textContent = '- ' + App.money(t.discount);
+      d.querySelector('#editGrandDisplay').textContent = App.money(t.grand);
+    };
+
+    const rerenderItems = () => {
+      tbody.innerHTML = renderItemsHtml();
+      updateTotalsUi();
+    };
+
+    updateTotalsUi();
+
+    d.querySelectorAll('input[name="editPayMethod"]').forEach((r) => {
+      r.addEventListener('change', () => {
+        const isAccount = r.value === 'account';
+        d.querySelector('#editAccountWrap').classList.toggle('hidden', !isAccount);
+        d.querySelectorAll('.pay-option').forEach((el) => {
+          el.classList.remove('active-cash', 'active-account');
+        });
+        if (isAccount) r.closest('.pay-option').classList.add('active-account');
+        else r.closest('.pay-option').classList.add('active-cash');
+      });
+    });
+
+    d.querySelectorAll('.quick-acc-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        d.querySelector('#editPaymentAccount').value = b.dataset.acc;
+      });
+    });
+
+    d.querySelector('#editAddProductBtn').addEventListener('click', () => {
+      const select = d.querySelector('#editProductSelect');
+      const opt = select.selectedOptions[0];
+      if (!opt || !opt.value) return App.toast('Please choose a product from the list', 'warn');
+      const productId = Number(opt.value);
+      const existing = editItems.find((x) => x.product_id === productId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        editItems.push({
+          key: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+          product_id: productId,
+          name: opt.dataset.name,
+          part_number: opt.dataset.part || '',
+          price: Number(opt.dataset.price) || 0,
+          quantity: 1,
+        });
+      }
+      select.value = '';
+      rerenderItems();
+    });
+
+    d.querySelector('#editAddManualBtn').addEventListener('click', () => {
+      const mName = prompt('Enter manual item name:');
+      if (!mName || !mName.trim()) return;
+      const mPriceStr = prompt('Enter unit price (Rs.):', '0');
+      if (mPriceStr === null) return;
+      const mPrice = Math.max(0, Number(mPriceStr) || 0);
+      editItems.push({
+        key: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+        product_id: null,
+        name: mName.trim(),
+        part_number: '',
+        price: mPrice,
+        quantity: 1,
+      });
+      rerenderItems();
+    });
+
+    tbody.addEventListener('click', (e) => {
+      const inc = e.target.closest('[data-qty-inc]');
+      if (inc) {
+        const item = editItems.find((x) => x.key === inc.dataset.qtyInc);
+        if (item) { item.quantity += 1; rerenderItems(); }
+        return;
+      }
+      const dec = e.target.closest('[data-qty-dec]');
+      if (dec) {
+        const item = editItems.find((x) => x.key === dec.dataset.qtyDec);
+        if (item) {
+          if (item.quantity > 1) {
+            item.quantity -= 1;
+            rerenderItems();
+          } else {
+            if (confirm(`Remove “${item.name}” from bill?`)) {
+              editItems = editItems.filter((x) => x.key !== item.key);
+              rerenderItems();
+            }
+          }
+        }
+        return;
+      }
+      const rem = e.target.closest('[data-remove-key]');
+      if (rem) {
+        const item = editItems.find((x) => x.key === rem.dataset.removeKey);
+        if (item) {
+          editItems = editItems.filter((x) => x.key !== item.key);
+          rerenderItems();
+        }
+      }
+    });
+
+    tbody.addEventListener('input', (e) => {
+      const pInput = e.target.closest('[data-price-key]');
+      if (pInput) {
+        const item = editItems.find((x) => x.key === pInput.dataset.priceKey);
+        if (item) {
+          item.price = Math.max(0, Number(pInput.value) || 0);
+          const lineTotal = (Math.round(item.price * 100) * item.quantity) / 100;
+          const totCell = tbody.querySelector(`[data-total-key="${item.key}"]`);
+          if (totCell) totCell.innerHTML = `<b>${App.money(lineTotal)}</b>`;
+          updateTotalsUi();
+        }
+        return;
+      }
+      const qInput = e.target.closest('[data-qty-key]');
+      if (qInput) {
+        const item = editItems.find((x) => x.key === qInput.dataset.qtyKey);
+        if (item) {
+          item.quantity = Math.max(1, Math.floor(Number(qInput.value) || 1));
+          const lineTotal = (Math.round(item.price * 100) * item.quantity) / 100;
+          const totCell = tbody.querySelector(`[data-total-key="${item.key}"]`);
+          if (totCell) totCell.innerHTML = `<b>${App.money(lineTotal)}</b>`;
+          updateTotalsUi();
+        }
+      }
+    });
+
+    d.querySelector('#editDiscountType').addEventListener('change', updateTotalsUi);
+    d.querySelector('#editDiscountVal').addEventListener('input', updateTotalsUi);
+
+    d.querySelector('[data-cancel]').addEventListener('click', () => d.close());
+
+    d.querySelector('[data-save-bill]').addEventListener('click', async () => {
+      errBox.classList.add('hidden');
+      if (!editItems.length) {
+        errBox.textContent = 'Bill must have at least one item.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      const payMethod = d.querySelector('input[name="editPayMethod"]:checked')?.value || 'cash';
+      const payAccount = d.querySelector('#editPaymentAccount')?.value.trim() || '';
+      if (payMethod === 'account' && !payAccount) {
+        errBox.textContent = 'Please enter Account / Bank name for Account payment.';
+        errBox.classList.remove('hidden');
+        d.querySelector('#editPaymentAccount').focus();
+        return;
+      }
+
+      const customerName = d.querySelector('#editCustomerName').value.trim();
+      const discountType = d.querySelector('#editDiscountType').value;
+      const discountValue = Math.max(0, Number(d.querySelector('#editDiscountVal').value) || 0);
+
+      const payload = {
+        customer_name: customerName,
+        payment_method: payMethod,
+        payment_account: payMethod === 'account' ? payAccount : null,
+        discount_type: discountType,
+        discount_value: discountValue,
+        items: editItems.map((it) => ({
+          product_id: it.product_id,
+          name: it.name,
+          part_number: it.part_number || null,
+          price: it.price,
+          quantity: it.quantity,
+        })),
+      };
+
+      const btn = d.querySelector('[data-save-bill]');
+      await App.busy(btn, async () => {
+        try {
+          const res = await App.api('/api/bills/' + bill.id, {
+            method: 'PUT',
+            body: payload,
+          });
+          d.close();
+          App.toast(`Bill #${bill.bill_number} updated successfully`, 'success');
+          App.stockChanged();
+          if (onSaved) onSaved(res.bill);
+        } catch (err) {
+          errBox.textContent = err.message;
+          errBox.classList.remove('hidden');
+          App.toast(err.message, 'error');
+        }
+      });
+    });
   };
   // ---------- Cart Helpers ----------
   App.CART_KEY = 'mj_cart_v1';
@@ -425,7 +818,7 @@
           type: s.type || 'amount',
         };
       }
-    } catch (_) {}
+    } catch (_) { }
     return { cart: [], customer: '', discount: '', type: 'amount' };
   };
 

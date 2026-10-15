@@ -49,6 +49,7 @@
         <td class="num"><b>${App.money(b.grand_total)}</b></td>
         <td class="actions">
           <button class="btn btn-sm" data-act="view" data-id="${b.id}">Open / Print</button>
+          <button class="btn btn-sm btn-primary" data-act="edit" data-id="${b.id}">Edit</button>
           <button class="btn btn-sm btn-danger" data-act="delete" data-id="${b.id}">Delete</button>
         </td>
       </tr>`;
@@ -64,6 +65,12 @@
     if (btn.dataset.act === 'view') {
       try {
         App.showBill((await App.api('/api/bills/' + b.id)).bill);
+      } catch (err) { App.toast(err.message, 'error'); }
+    }
+    if (btn.dataset.act === 'edit') {
+      try {
+        const { bill } = await App.api('/api/bills/' + b.id);
+        App.openEditBill(bill, () => load());
       } catch (err) { App.toast(err.message, 'error'); }
     }
     if (btn.dataset.act === 'delete') {
