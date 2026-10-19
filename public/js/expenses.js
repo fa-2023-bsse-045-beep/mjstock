@@ -33,6 +33,12 @@
   const statCashInHand = document.getElementById('statCashInHand');
   const statCashInHandTile = document.getElementById('statCashInHandTile');
   const statCashInHandSub = document.getElementById('statCashInHandSub');
+  const statDue       = document.getElementById('statDue');
+  const statDueTile   = document.getElementById('statDueTile');
+  const statDueSub    = document.getElementById('statDueSub');
+  const pendingSection = document.getElementById('pendingSection');
+  const pendingBadge  = document.getElementById('pendingBadge');
+  const pendingBillRows = document.getElementById('pendingBillRows');
 
   // ── Init filter pickers ──────────────────────────────────────────────
   filterMonth.value = month;
@@ -89,6 +95,76 @@
       }
       if (statCashInHandSub) {
         statCashInHandSub.textContent = `Cash: ${App.money(summary.cash_income || 0)} − Exp: ${App.money(summary.total_expenses || 0)}`;
+      }
+    }
+
+    if (statDue) {
+      const due = Number(summary.total_due || 0);
+      const pendingCnt = Number(summary.pending_count || 0);
+      statDue.textContent = App.money(due);
+      if (statDueSub) {
+        const allTime = Number(summary.all_time_due || 0);
+        statDueSub.textContent = `${pendingCnt} bill${pendingCnt !== 1 ? 's' : ''} · All-time due: ${App.money(allTime)}`;
+      }
+      if (statDueTile) {
+        statDueTile.className = 'stat ' + (due > 0 ? 'warn' : 'good');
+        statDueTile.style.borderLeftColor = due > 0 ? '#dc2626' : 'var(--ok)';
+        statDue.style.color = due > 0 ? '#dc2626' : '#15803d';
+      }
+    }
+
+    // ── Monthly Pending Due Bills Section ──────────────────────────
+    if (pendingBillRows && pendingSection) {
+      const pBills = data.pendingBills || [];
+      if (pendingBadge) pendingBadge.textContent = pBills.length;
+      if (!pBills.length) {
+        pendingBillRows.innerHTML = '<tr><td colspan="8" class="empty" style="color:#15803d;padding:1.2rem">✓ All bills fully paid for this month! (اس مہینے کا کوئی بقایا نہیں ہے)</td></tr>';
+      } else {
+        pendingBillRows.innerHTML = pBills.map((b) => {
+          const cust = App.esc(b.customer_name || 'Walk-in');
+          const phone = b.customer_phone ? `<br><a href="tel:${App.esc(b.customer_phone)}" class="small muted" style="text-decoration:none">${App.esc(b.customer_phone)}</a>` : '';
+          const veh = b.vehicle_reg_no ? `<span class="badge" style="background:#e0e7ff;color:#3730a3">${App.esc(b.vehicle_reg_no)}</span>` : '<span class="muted">—</span>';
+          const bal = Number(b.balance_due) || 0;
+          const grand = Number(b.grand_total) || 0;
+          const paid = b.advance_paid !== null ? Number(b.advance_paid) : Math.max(0, grand - bal);
+          return `
+            <tr>
+              <td><a href="#" data-view-bill="${b.id}" style="font-weight:700">#${App.esc(b.bill_number)}</a></td>
+              <td class="nowrap small">${App.dateTime(b.created_at)}</td>
+              <td><b>${cust}</b>${phone}</td>
+              <td>${veh}</td>
+              <td class="num"><b>${App.money(grand)}</b></td>
+              <td class="num" style="color:#15803d">${App.money(paid)}</td>
+              <td class="num" style="color:#dc2626;font-size:1.05rem"><b>${App.money(bal)}</b></td>
+              <td class="actions">
+                <button type="button" class="btn btn-sm btn-success" data-pay-bill="${b.id}" style="font-weight:700">
+                  💰 Pay / Clear
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        pendingBillRows.querySelectorAll('[data-pay-bill]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const billId = Number(btn.dataset.payBill);
+            const bill = pBills.find((x) => x.id === billId);
+            if (bill) {
+              App.openPayBalanceModal(bill, () => load());
+            }
+          });
+        });
+
+        pendingBillRows.querySelectorAll('[data-view-bill]').forEach((link) => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const billId = Number(link.dataset.viewBill);
+            const bill = pBills.find((x) => x.id === billId);
+            if (bill) {
+              App.showBill(bill, { onClose: () => load() });
+            }
+          });
+        });
       }
     }
 

@@ -25,6 +25,9 @@
   const statCashInHand = document.getElementById('statCashInHand');
   const statCashInHandTile = document.getElementById('statCashInHandTile');
   const statCashInHandSub = document.getElementById('statCashInHandSub');
+  const statDue       = document.getElementById('statDue');
+  const statDueTile   = document.getElementById('statDueTile');
+  const statDueCount  = document.getElementById('statDueCount');
 
   const expenseForm   = document.getElementById('expenseForm');
   const expAmount     = document.getElementById('expAmount');
@@ -74,6 +77,20 @@
       }
       if (statCashInHandSub) {
         statCashInHandSub.textContent = `Cash: ${App.money(summary.cash_income || 0)} − Exp: ${App.money(summary.total_expenses || 0)}`;
+      }
+    }
+
+    if (statDue) {
+      const due = Number(summary.total_due || 0);
+      const pendingCnt = Number(summary.pending_count || 0);
+      statDue.textContent = App.money(due);
+      if (statDueCount) {
+        statDueCount.textContent = `${pendingCnt} bill${pendingCnt !== 1 ? 's' : ''} with pending balance`;
+      }
+      if (statDueTile) {
+        statDueTile.className = 'stat ' + (due > 0 ? 'warn' : 'good');
+        statDueTile.style.borderLeftColor = due > 0 ? '#dc2626' : 'var(--ok)';
+        statDue.style.color = due > 0 ? '#dc2626' : '#15803d';
       }
     }
 

@@ -81,7 +81,9 @@ router.get('/my', requireApi('owner', 'cashier'), async (req, res) => {
     `SELECT COALESCE(SUM(grand_total), 0) AS total_income,
             COUNT(*)::int AS bill_count,
             COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_income,
-            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income
+            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income,
+            COALESCE(SUM(COALESCE(balance_due, 0)), 0) AS total_due,
+            COUNT(CASE WHEN balance_due IS NOT NULL AND balance_due > 0 THEN 1 END)::int AS pending_count
        FROM bills b WHERE b.created_by = $2 AND ${ic}`,
     ip
   );
@@ -156,9 +158,33 @@ router.get('/', requireApi('owner'), async (req, res) => {
     `SELECT COALESCE(SUM(grand_total), 0) AS total_income,
             COUNT(*)::int AS bill_count,
             COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_income,
-            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income
+            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_income,
+            COALESCE(SUM(COALESCE(balance_due, 0)), 0) AS total_due,
+            COUNT(CASE WHEN balance_due IS NOT NULL AND balance_due > 0 THEN 1 END)::int AS pending_count,
+            COALESCE(SUM(COALESCE(advance_paid, 0)), 0) AS advance_paid_total
        FROM bills WHERE ${bc}`,
     bp
+  );
+
+  const allTimePendingRes = await query(
+    `SELECT COALESCE(SUM(balance_due), 0) AS all_time_due,
+            COUNT(*)::int AS all_time_pending_count
+       FROM bills
+      WHERE balance_due IS NOT NULL AND balance_due > 0`
+  );
+
+  const pbp = [TZ];
+  const pbc = monthClause(`b.created_at AT TIME ZONE $1`, pbp, y, m);
+  const pendingBillsRes = await query(
+    `SELECT b.id, b.bill_number, b.customer_name, b.customer_phone, b.vehicle_reg_no,
+            b.current_mileage, b.next_mileage,
+            b.grand_total, b.advance_paid, b.balance_due, b.payment_method, b.payment_account,
+            b.created_at, u.name AS cashier_name
+       FROM bills b
+       LEFT JOIN users u ON u.id = b.created_by
+      WHERE b.balance_due IS NOT NULL AND b.balance_due > 0 AND ${pbc}
+      ORDER BY b.created_at DESC, b.id DESC`,
+    pbp
   );
 
   // ── Account breakdown (bills paid via bank / online account) ────────
@@ -199,6 +225,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
 
   const ei = expenseOverview.rows[0];
   const ii = incomeOverview.rows[0];
+  const atp = allTimePendingRes.rows[0];
   const expTotal = Number(ei.total_expenses);
   const incTotal = Number(ii.total_income);
   const cashInc  = Number(ii.cash_income);
@@ -212,10 +239,16 @@ router.get('/', requireApi('owner'), async (req, res) => {
       total_income:   ii.total_income,
       cash_income:    ii.cash_income,
       account_income: ii.account_income,
+      total_due:      ii.total_due,
+      pending_count:  ii.pending_count,
+      advance_paid_total: ii.advance_paid_total,
+      all_time_due:   atp.all_time_due,
+      all_time_pending_count: atp.all_time_pending_count,
       bill_count:     ii.bill_count,
       balance:        incTotal - expTotal,
       cash_in_hand:   cashInc - expTotal,
     },
+    pendingBills: pendingBillsRes.rows,
     byPurpose:  byPurpose.rows,
     byCashier:  byCashier.rows,
     byAccount:  byAccount.rows,

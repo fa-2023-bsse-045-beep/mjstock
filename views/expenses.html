@@ -50,7 +50,48 @@
         <div class="label">Overall Balance</div>
         <div class="value" id="statBalance">…</div>
       </div>
+      <div class="stat warn" id="statDueTile" style="border-left-color:#dc2626">
+        <div class="label" style="display:flex;justify-content:space-between;align-items:center">
+          <span>⏳ Total Due (کل بقایا)</span>
+          <a href="/bills?balance_status=pending" class="small" style="font-weight:700;text-decoration:none;color:#dc2626">All Bills &rarr;</a>
+        </div>
+        <div class="value" id="statDue" style="color:#dc2626">…</div>
+        <div class="small muted" id="statDueSub">0 pending bills</div>
+      </div>
     </div>
+
+    <!-- ── Monthly Pending Due Bills Section ───────────────────────────── -->
+    <section class="card" id="pendingSection" style="margin-bottom:1rem;border-left:4px solid #dc2626">
+      <div class="page-head" style="margin-bottom:.65rem">
+        <div>
+          <h2 style="margin:0;color:#991b1b;display:flex;align-items:center;gap:6px">
+            <span>⏳ Monthly Pending Due Bills (اس مہینے کے بقایا جات)</span>
+            <span class="badge badge-out" id="pendingBadge">0</span>
+          </h2>
+          <div class="small muted" style="margin-top:2px">Unpaid customer balances for this month. Click <b>Pay / Clear</b> to receive remaining payment.</div>
+        </div>
+        <a href="/bills?balance_status=pending" class="btn btn-sm btn-danger">View All-Time Pending &rarr;</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Bill #</th>
+              <th>Date</th>
+              <th>Customer &amp; Phone</th>
+              <th>Vehicle</th>
+              <th class="num">Grand Total</th>
+              <th class="num">Paid</th>
+              <th class="num" style="color:#dc2626">Remaining Due</th>
+              <th class="actions">Action</th>
+            </tr>
+          </thead>
+          <tbody id="pendingBillRows">
+            <tr><td colspan="8" class="empty">Loading pending bills…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <!-- ── Breakdowns ─────────────────────────────────────────────────── -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:1rem;margin-bottom:1rem">
