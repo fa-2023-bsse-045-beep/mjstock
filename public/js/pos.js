@@ -11,7 +11,17 @@
 
   // ---------- Persistence (survives an accidental page refresh) ----------
   function saveCart() {
-    sessionStorage.setItem(CART_KEY, JSON.stringify({ cart, customer: $('customer').value, discount: $('discount').value, type: $('discountType').value }));
+    sessionStorage.setItem(CART_KEY, JSON.stringify({
+      cart,
+      customer: $('customer').value,
+      customer_phone: $('customerPhone') ? $('customerPhone').value : '',
+      vehicle_reg_no: $('vehicleReg') ? $('vehicleReg').value : '',
+      current_mileage: $('currentMileage') ? $('currentMileage').value : '',
+      next_mileage: $('nextMileage') ? $('nextMileage').value : '',
+      discount: $('discount').value,
+      type: $('discountType').value,
+      advance: $('advance').value
+    }));
   }
   function loadCart() {
     try {
@@ -19,8 +29,13 @@
       if (!s) return;
       cart = Array.isArray(s.cart) ? s.cart : [];
       $('customer').value = s.customer || '';
+      if ($('customerPhone')) $('customerPhone').value = s.customer_phone || '';
+      if ($('vehicleReg')) $('vehicleReg').value = s.vehicle_reg_no || '';
+      if ($('currentMileage')) $('currentMileage').value = s.current_mileage || '';
+      if ($('nextMileage')) $('nextMileage').value = s.next_mileage || '';
       $('discount').value = s.discount || '';
       $('discountType').value = s.type === 'percent' ? 'percent' : 'amount';
+      if ($('advance')) $('advance').value = s.advance || '';
     } catch (_) { cart = []; }
   }
 
@@ -127,7 +142,25 @@
     const val = Number($('discount').value) || 0;
     let discountC = $('discountType').value === 'percent' ? Math.round((subtotalC * Math.min(Math.max(val, 0), 100)) / 100) : cents(Math.max(val, 0));
     discountC = Math.min(discountC, subtotalC);
-    return { subtotal: subtotalC / 100, discount: discountC / 100, grand: (subtotalC - discountC) / 100 };
+    const grandC = subtotalC - discountC;
+
+    const advRaw = $('advance') ? $('advance').value.trim() : '';
+    const hasAdvance = advRaw !== '';
+    let advanceC = null;
+    let balanceC = null;
+    if (hasAdvance) {
+      advanceC = cents(Math.max(0, Number(advRaw) || 0));
+      if (advanceC > grandC) advanceC = grandC;
+      balanceC = Math.max(0, grandC - advanceC);
+    }
+    return {
+      subtotal: subtotalC / 100,
+      discount: discountC / 100,
+      grand: grandC / 100,
+      hasAdvance,
+      advance: hasAdvance ? advanceC / 100 : null,
+      balance: hasAdvance ? balanceC / 100 : null,
+    };
   }
 
   function renderCart() {
@@ -163,6 +196,19 @@
     $('subtotal').textContent = App.money(t.subtotal);
     $('discountShow').textContent = '- ' + App.money(t.discount);
     $('grandTotal').textContent = App.money(t.grand);
+
+    const balBox = $('posBalanceBox');
+    if (balBox) {
+      if (t.hasAdvance) {
+        balBox.style.display = 'block';
+        $('posAdvanceShow').textContent = App.money(t.advance);
+        $('posBalanceShow').textContent = App.money(t.balance);
+        $('posBalanceShow').style.color = t.balance > 0 ? '#dc2626' : '#15803d';
+      } else {
+        balBox.style.display = 'none';
+      }
+    }
+
     $('mbCount').textContent = `${count} item${count === 1 ? '' : 's'}`;
     $('mbTotal').textContent = App.money(t.grand);
     $('generateBill').disabled = cart.length === 0;
@@ -191,8 +237,13 @@
   function resetCart() {
     cart = [];
     $('customer').value = '';
+    if ($('customerPhone')) $('customerPhone').value = '';
+    if ($('vehicleReg')) $('vehicleReg').value = '';
+    if ($('currentMileage')) $('currentMileage').value = '';
+    if ($('nextMileage')) $('nextMileage').value = '';
     $('discount').value = '';
     $('discountType').value = 'amount';
+    if ($('advance')) $('advance').value = '';
     setPaymentMethod('cash');
     changed();
   }
@@ -210,10 +261,23 @@
     if (isAccount && !paymentAccount) {
       return App.toast('Please specify which account was used (e.g. JazzCash, EasyPaisa, Bank)', 'error');
     }
+
+    const t = totals();
+    const advStr = $('advance') ? $('advance').value.trim() : '';
+    const advancePaid = advStr !== '' ? Math.max(0, Number(advStr) || 0) : null;
+    if (advancePaid !== null && advancePaid > t.grand) {
+      return App.toast(`Advance amount (${App.money(advancePaid)}) cannot be greater than Grand Total (${App.money(t.grand)})`, 'error');
+    }
+
     const body = {
       customer_name: $('customer').value.trim(),
+      customer_phone: $('customerPhone') ? $('customerPhone').value.trim() : '',
+      vehicle_reg_no: $('vehicleReg') ? $('vehicleReg').value.trim() : '',
+      current_mileage: $('currentMileage') ? $('currentMileage').value.trim() : '',
+      next_mileage: $('nextMileage') ? $('nextMileage').value.trim() : '',
       discount_type: $('discountType').value,
       discount_value: $('discount').value || 0,
+      advance_paid: advancePaid,
       payment_method: paymentMethod,
       payment_account: paymentAccount,
       items: cart.map((c) =>
@@ -311,7 +375,37 @@
     if (cart.length && !(await App.confirm('Clear the cart for the next customer?', { okText: 'Clear Cart', danger: true }))) return;
     resetCart();
   });
-  ['customer', 'discount', 'discountType'].forEach((id) => $(id).addEventListener('input', () => { renderCart(); saveCart(); }));
+  ['customer', 'customerPhone', 'vehicleReg', 'currentMileage', 'nextMileage', 'discount', 'discountType', 'advance'].forEach((id) => {
+    if ($(id)) $(id).addEventListener('input', () => { renderCart(); saveCart(); });
+  });
+
+  function addMileage(km) {
+    const curVal = $('currentMileage') ? $('currentMileage').value.trim() : '';
+    const num = parseInt(curVal.replace(/[^\d]/g, ''), 10);
+    if (!isNaN(num) && num > 0) {
+      const nextNum = num + km;
+      const unit = curVal.toLowerCase().includes('km') ? ' km' : '';
+      if ($('nextMileage')) {
+        $('nextMileage').value = nextNum.toLocaleString() + unit;
+        saveCart();
+      }
+    } else {
+      App.toast('Enter current mileage first (e.g. 45000)', 'info');
+      if ($('currentMileage')) $('currentMileage').focus();
+    }
+  }
+
+  if ($('btnNextPlus3k')) $('btnNextPlus3k').addEventListener('click', () => addMileage(3000));
+  if ($('btnNextPlus5k')) $('btnNextPlus5k').addEventListener('click', () => addMileage(5000));
+  if ($('btnZeroAdvance')) {
+    $('btnZeroAdvance').addEventListener('click', () => {
+      if ($('advance')) {
+        $('advance').value = '0';
+        renderCart();
+        saveCart();
+      }
+    });
+  }
   if ($('payCash')) $('payCash').addEventListener('change', () => setPaymentMethod('cash'));
   if ($('payAccount')) $('payAccount').addEventListener('change', () => setPaymentMethod('account'));
   document.querySelectorAll('.quick-acc-btn').forEach((btn) => {

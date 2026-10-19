@@ -41,9 +41,40 @@
       </div>
       <div class="cart-items" id="cartItems"></div>
 
-      <div class="field">
-        <label for="customer">Customer name (optional)</label>
-        <input id="customer" maxlength="100" placeholder="Walk-in customer">
+      <!-- Customer & Vehicle Details -->
+      <div class="pos-customer-box">
+        <div class="pos-customer-header">
+          <span>🚗 Customer &amp; Vehicle Details</span>
+          <span class="muted small">(optional)</span>
+        </div>
+        <div class="row" style="gap:.45rem;margin-bottom:.4rem">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="customer">Customer Name</label>
+            <input id="customer" maxlength="100" placeholder="Walk-in customer">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="customerPhone">Phone Num</label>
+            <input id="customerPhone" maxlength="50" placeholder="03xxxxxxxxx" type="tel">
+          </div>
+        </div>
+        <div class="row" style="gap:.45rem;margin-bottom:.4rem">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="vehicleReg">Registration No</label>
+            <input id="vehicleReg" maxlength="50" placeholder="e.g. LEA-1234" style="text-transform:uppercase">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="currentMileage">Current Mileage</label>
+            <input id="currentMileage" maxlength="50" placeholder="e.g. 45,000 km">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="nextMileage">Next Mileage</label>
+          <div class="pos-mileage-row">
+            <input id="nextMileage" maxlength="50" placeholder="e.g. 50,000 km">
+            <button type="button" class="btn btn-sm" id="btnNextPlus3k" title="Add 3,000 km to Current Mileage">+3,000</button>
+            <button type="button" class="btn btn-sm" id="btnNextPlus5k" title="Add 5,000 km to Current Mileage">+5,000</button>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label for="discount">Discount (optional)</label>
@@ -89,11 +120,24 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="advance">Advance Paid (optional)</label>
+        <div style="display:flex;gap:.4rem">
+          <input id="advance" type="number" min="0" step="any" placeholder="Leave empty if fully paid">
+          <button type="button" class="btn btn-sm" id="btnZeroAdvance" title="Set Advance to 0 (Customer pays later / Udhaar)" style="white-space:nowrap;font-size:0.8rem">0 Adv</button>
+        </div>
+        <div class="small muted" style="margin-top:.2rem">Enter advance amount if customer paid partially.</div>
+      </div>
+
       <div class="totals">
         <div class="line"><span>Subtotal</span><span id="subtotal">Rs 0</span></div>
         <div class="line"><span>Discount</span><span id="discountShow">- Rs 0</span></div>
       </div>
       <div class="grand"><span class="label">Grand Total</span><span class="amount" id="grandTotal">Rs 0</span></div>
+      <div class="totals" id="posBalanceBox" style="display:none;margin-top:.4rem;padding-top:.4rem;border-top:1px dashed var(--line)">
+        <div class="line"><span>Advance Paid</span><span id="posAdvanceShow" style="font-weight:600">Rs 0</span></div>
+        <div class="line" style="font-size:1.05rem;font-weight:700"><span>Remaining Balance</span><span id="posBalanceShow" style="color:#dc2626">Rs 0</span></div>
+      </div>
       <button class="btn btn-primary btn-lg btn-block" id="generateBill">Generate Bill</button>
     </aside>
   </main>

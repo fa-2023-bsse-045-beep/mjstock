@@ -30,17 +30,32 @@ CREATE TABLE IF NOT EXISTS bills (
   id               SERIAL PRIMARY KEY,
   bill_number      BIGINT        NOT NULL UNIQUE DEFAULT nextval('bill_number_seq'),
   customer_name    VARCHAR(100),
+  customer_phone   VARCHAR(50),
+  vehicle_reg_no   VARCHAR(50),
+  current_mileage  VARCHAR(50),
+  next_mileage     VARCHAR(50),
   subtotal         NUMERIC(12,2) NOT NULL CHECK (subtotal >= 0),
   discount         NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
   grand_total      NUMERIC(12,2) NOT NULL CHECK (grand_total >= 0),
+  advance_paid     NUMERIC(12,2) DEFAULT NULL CHECK (advance_paid IS NULL OR advance_paid >= 0),
+  balance_due      NUMERIC(12,2) DEFAULT NULL CHECK (balance_due IS NULL OR balance_due >= 0),
   payment_method   VARCHAR(20)   NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'account')),
   payment_account  VARCHAR(100),
   created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS customer_phone   VARCHAR(50);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS vehicle_reg_no   VARCHAR(50);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS current_mileage  VARCHAR(50);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS next_mileage     VARCHAR(50);
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_method  VARCHAR(20)  NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'account'));
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_account VARCHAR(100);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS advance_paid    NUMERIC(12,2) DEFAULT NULL CHECK (advance_paid IS NULL OR advance_paid >= 0);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS balance_due     NUMERIC(12,2) DEFAULT NULL CHECK (balance_due IS NULL OR balance_due >= 0);
 CREATE INDEX IF NOT EXISTS bills_created_at_idx ON bills (created_at DESC);
+CREATE INDEX IF NOT EXISTS bills_balance_due_idx ON bills (balance_due) WHERE balance_due > 0;
+CREATE INDEX IF NOT EXISTS bills_vehicle_reg_idx ON bills (LOWER(vehicle_reg_no));
+CREATE INDEX IF NOT EXISTS bills_customer_phone_idx ON bills (customer_phone);
 
 CREATE TABLE IF NOT EXISTS bill_items (
   id          SERIAL PRIMARY KEY,

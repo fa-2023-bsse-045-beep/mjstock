@@ -330,23 +330,33 @@
     return `
       <div class="bill-paper">
         <div class="bill-head">
-          <img src="/logo.jpg" alt="MJ AUTOS" class="bill-logo">
-          <p class="shop">${App.esc(shop.name || 'MJ AUTOS')}</p>
-          <div class="sub">Auto Parts &amp; Accessories</div>
-          ${shop.address ? `<div class="sub">${App.esc(shop.address)}</div>` : ''}
-          <div class="bill-contacts">
-            <span>Hafiz Qamar: <b>03008498742</b></span>
-            <span class="contact-sep">·</span>
-            <span>Ch Ahsan: <b>03083412615</b></span>
+          <div class="bill-header-row">
+            <img src="/logo.jpg" alt="MJ AUTOS" class="bill-logo">
+            <div class="bill-header-info">
+              <p class="shop">${App.esc(shop.name || 'MJ AUTOS')}</p>
+              <div class="sub">Auto Parts &amp; Repairing</div>
+              ${shop.address ? `<div class="sub address">${App.esc(shop.address)}</div>` : ''}
+              <div class="bill-contacts">
+                <span>Hafiz Qamar: <b>03008498742</b></span>
+                <span class="contact-sep">·</span>
+                <span>Ch Ahsan: <b>03083412615</b></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="bill-meta">
           <div>Bill No: <b>#${bill.bill_number}</b></div>
           <div class="r">${App.dateTime(bill.created_at)}</div>
           <div>Customer: <b>${App.esc(bill.customer_name || 'Walk-in customer')}</b></div>
+          <div class="r ${bill.customer_phone ? '' : 'meta-empty-opt'}">Phone: <b>${App.esc(bill.customer_phone || '-')}</b></div>
+          <div class="${bill.vehicle_reg_no ? '' : 'meta-empty-opt'}">Reg No: <b>${App.esc(bill.vehicle_reg_no || '-')}</b></div>
           <div class="r">Cashier: ${App.esc(bill.cashier_name || '-')}</div>
+          <div class="${bill.current_mileage ? '' : 'meta-empty-opt'}">Current Mileage: <b>${App.esc(bill.current_mileage || '-')}</b></div>
+          <div class="r ${bill.next_mileage ? '' : 'meta-empty-opt'}">Next Mileage: <b>${App.esc(bill.next_mileage || '-')}</b></div>
           <div>Payment: <b>${bill.payment_method === 'account' ? '💳 ' + App.esc(bill.payment_account || 'Account') : '💵 Cash'}</b></div>
-          <div class="r"></div>
+          <div class="r">Status: <b>${(bill.advance_paid !== null && bill.advance_paid !== undefined && Number(bill.balance_due) > 0)
+            ? `<span style="color:#b91c1c;font-weight:700">⚠️ Pending: ${App.money(bill.balance_due)}</span>`
+            : '<span style="color:#15803d;font-weight:700">✓ All Paid (مکمل ادا)</span>'}</b></div>
         </div>
         <table class="bill-table">
           <thead><tr><th>Item</th><th class="n">Price</th><th class="n">Qty</th><th class="n">Total</th></tr></thead>
@@ -356,6 +366,23 @@
           <div class="line"><span>Subtotal</span><span>${App.money(bill.subtotal)}</span></div>
           ${Number(bill.discount) > 0 ? `<div class="line"><span>Discount</span><span>- ${App.money(bill.discount)}</span></div>` : ''}
           <div class="line grand-line"><span>GRAND TOTAL</span><span>${App.money(bill.grand_total)}</span></div>
+          ${(bill.advance_paid !== null && bill.advance_paid !== undefined) ? `
+          <div class="line bill-adv-line" style="font-weight:600;padding-top:4px">
+            <span>Amount Paid (ادا شدہ رقم)</span>
+            <span style="color:#15803d">${App.money(bill.advance_paid)}</span>
+          </div>
+          <div class="line bill-bal-line" style="font-weight:700;font-size:1.05em;border-top:1px dashed #000;margin-top:4px;padding-top:4px;color:${Number(bill.balance_due) > 0 ? '#b91c1c' : '#15803d'}">
+            <span>${Number(bill.balance_due) > 0 ? 'Remaining Balance (بقایا رقم)' : 'Payment Status'}</span>
+            <span>${Number(bill.balance_due) > 0 ? `⚠️ ${App.money(bill.balance_due)}` : '✓ ALL PAID (مکمل ادا شدہ)'}</span>
+          </div>` : `
+          <div class="line bill-adv-line" style="font-weight:600;padding-top:4px">
+            <span>Amount Paid (ادا شدہ رقم)</span>
+            <span style="color:#15803d">${App.money(bill.grand_total)}</span>
+          </div>
+          <div class="line bill-bal-line" style="font-weight:700;font-size:1.05em;border-top:1px dashed #000;margin-top:4px;padding-top:4px;color:#15803d">
+            <span>Payment Status</span>
+            <span>✓ ALL PAID (مکمل ادا شدہ)</span>
+          </div>`}
         </div>
         <div class="bill-thanks">Thank you for shopping at MJ AUTOS!<small>Please visit again.</small></div>
       </div>`;
@@ -398,29 +425,203 @@
   App.showBill = function (bill, { onClose, title } = {}) {
     const last = localStorage.getItem('mj_print_size') || '80mm';
     const isOwner = App.user && App.user.role === 'owner';
+    const hasPendingBalance = bill.balance_due !== null && bill.balance_due !== undefined && Number(bill.balance_due) > 0;
     const d = App.dialog({
       title: title || `Bill #${bill.bill_number}`,
       wide: true,
       body: App.billHtml(bill),
       foot: `
-        ${isOwner ? `<button type="button" class="btn btn-primary" data-edit-bill style="margin-right:auto">✏️ Edit Bill</button>` : ''}
+        ${hasPendingBalance ? `<button type="button" class="btn btn-primary" data-pay-bill style="background:#15803d;border-color:#15803d;margin-right:auto;font-weight:600">💰 Receive Payment / All Paid (بقایا وصول کریں)</button>` : ''}
+        ${isOwner ? `<button type="button" class="btn ${hasPendingBalance ? '' : 'btn-primary'}" data-edit-bill ${hasPendingBalance ? '' : 'style="margin-right:auto"'}>✏️ Edit Bill</button>` : ''}
         <button class="btn ${last === 'A4' ? 'btn-primary' : 'btn-dark'}" data-print="A4">Print A4</button>
         <button class="btn ${last === '80mm' ? 'btn-primary' : 'btn-dark'}" data-print="80mm">Print Receipt (80mm)</button>
         <button class="btn" data-close>Close</button>`,
       onClose,
     });
+    const payBtn = d.querySelector('[data-pay-bill]');
+    if (payBtn) {
+      payBtn.addEventListener('click', () => {
+        d.close();
+        App.openPayBalanceModal(bill, (updated) => App.showBill(updated, { onClose }));
+      });
+    }
     if (isOwner) {
       const editBtn = d.querySelector('[data-edit-bill]');
       if (editBtn) {
         editBtn.addEventListener('click', () => {
           d.close();
-          App.openEditBill(bill, (updated) => App.showBill(updated));
+          App.openEditBill(bill, (updated) => App.showBill(updated, { onClose }));
         });
       }
     }
     d.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => App.printBill(bill, b.dataset.print)));
     d.querySelector('[data-close]').addEventListener('click', () => d.close());
     d.querySelector(`[data-print="${last}"]`).focus();
+    return d;
+  };
+
+  // ---------- Receive Payment / Clear Balance Modal ----------
+  App.openPayBalanceModal = function (bill, onSaved) {
+    if (!bill) return;
+    const grandTotal = Number(bill.grand_total) || 0;
+    const balanceDue = bill.balance_due !== null && bill.balance_due !== undefined ? Number(bill.balance_due) : 0;
+    const alreadyPaid = bill.advance_paid !== null && bill.advance_paid !== undefined
+      ? Number(bill.advance_paid)
+      : (bill.balance_due !== null ? Math.max(0, grandTotal - balanceDue) : grandTotal);
+
+    if (balanceDue <= 0) {
+      App.toast('This bill is already fully paid! (پہلے ہی تمام ادا شدہ ہے)', 'info');
+      return;
+    }
+
+    const d = App.dialog({
+      title: `💰 Receive Payment · Bill #${bill.bill_number}`,
+      body: `
+        <div class="form-error hidden" id="payModalErr"></div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.95rem">
+            <span class="muted">Customer:</span>
+            <b>${App.esc(bill.customer_name || 'Walk-in customer')}${bill.vehicle_reg_no ? ` <span class="badge" style="background:#e0e7ff;color:#3730a3">${App.esc(bill.vehicle_reg_no)}</span>` : ''}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span class="muted">Grand Total (کل بل):</span>
+            <b>${App.money(grandTotal)}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#15803d">
+            <span>Already Paid (ادا شدہ):</span>
+            <b>${App.money(alreadyPaid)}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;color:#b91c1c;font-size:1.15rem;font-weight:800">
+            <span>Remaining Balance (بقایا):</span>
+            <span>${App.money(balanceDue)}</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="payNowInput" style="font-weight:700">Amount to Receive (وصول ہونے والی رقم)</label>
+          <div style="display:flex;gap:6px">
+            <input type="number" id="payNowInput" min="0.01" max="${balanceDue}" step="any" value="${balanceDue}" style="font-size:1.1rem;font-weight:700;flex:1">
+            <button type="button" class="btn btn-primary" id="btnPayFullNow" style="white-space:nowrap;font-size:0.85rem">
+              ✓ Full (All Paid)
+            </button>
+          </div>
+          <div class="small muted" style="margin-top:4px">Enter payment amount. Click <b>Full (All Paid)</b> to clear all remaining balance.</div>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label style="font-weight:600">Payment Method (ادائیگی کا طریقہ)</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <label class="pay-option active-cash" id="lblPayNowCash" style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;margin:0;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer">
+              <input type="radio" name="payNowMethod" value="cash" checked> 💵 Cash
+            </label>
+            <label class="pay-option" id="lblPayNowAccount" style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;margin:0;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer">
+              <input type="radio" name="payNowMethod" value="account"> 💳 Account / Online
+            </label>
+          </div>
+        </div>
+
+        <div class="field hidden" id="payNowAccountWrap" style="margin-top:8px">
+          <label for="payNowAccountInput" style="font-size:0.8rem;color:var(--muted)">Account / Bank Name</label>
+          <input id="payNowAccountInput" placeholder="e.g. JazzCash, EasyPaisa, Meezan Bank" maxlength="100">
+          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+            <button type="button" class="quick-acc-btn" data-acc="JazzCash">JazzCash</button>
+            <button type="button" class="quick-acc-btn" data-acc="EasyPaisa">EasyPaisa</button>
+            <button type="button" class="quick-acc-btn" data-acc="Meezan Bank">Meezan Bank</button>
+            <button type="button" class="quick-acc-btn" data-acc="Bank Transfer">Bank Transfer</button>
+          </div>
+        </div>
+      `,
+      foot: `
+        <button class="btn" data-cancel>Cancel</button>
+        <button class="btn btn-primary" data-confirm-pay style="font-weight:700">💰 Confirm Payment (وصول کریں)</button>
+      `,
+    });
+
+    const errBox = d.querySelector('#payModalErr');
+    const inputAmount = d.querySelector('#payNowInput');
+    const btnFull = d.querySelector('#btnPayFullNow');
+    const radCash = d.querySelector('input[name="payNowMethod"][value="cash"]');
+    const radAcc = d.querySelector('input[name="payNowMethod"][value="account"]');
+    const lblCash = d.querySelector('#lblPayNowCash');
+    const lblAcc = d.querySelector('#lblPayNowAccount');
+    const accWrap = d.querySelector('#payNowAccountWrap');
+    const accInput = d.querySelector('#payNowAccountInput');
+
+    btnFull.addEventListener('click', () => {
+      inputAmount.value = balanceDue;
+      inputAmount.focus();
+    });
+
+    const setMethod = (isCash) => {
+      radCash.checked = isCash;
+      radAcc.checked = !isCash;
+      lblCash.classList.toggle('active-cash', isCash);
+      lblAcc.classList.toggle('active-account', !isCash);
+      accWrap.classList.toggle('hidden', isCash);
+      if (!isCash) setTimeout(() => accInput.focus(), 50);
+    };
+
+    radCash.addEventListener('change', () => setMethod(true));
+    radAcc.addEventListener('change', () => setMethod(false));
+    lblCash.addEventListener('click', () => setMethod(true));
+    lblAcc.addEventListener('click', () => setMethod(false));
+
+    d.querySelectorAll('.quick-acc-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        accInput.value = b.dataset.acc;
+        accInput.focus();
+      });
+    });
+
+    d.querySelector('[data-cancel]').addEventListener('click', () => d.close());
+
+    const submitPayment = async () => {
+      errBox.classList.add('hidden');
+      const amt = Number(inputAmount.value);
+      if (!Number.isFinite(amt) || amt <= 0) {
+        errBox.textContent = 'Please enter a valid amount greater than 0.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (amt > balanceDue) {
+        errBox.textContent = `Amount cannot exceed remaining balance (${App.money(balanceDue)}).`;
+        errBox.classList.remove('hidden');
+        return;
+      }
+      const isAccount = radAcc.checked;
+      const paymentAccount = isAccount ? accInput.value.trim() : null;
+      if (isAccount && !paymentAccount) {
+        errBox.textContent = 'Please specify the account name (e.g. JazzCash, Bank).';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      const markAllPaid = Math.abs(amt - balanceDue) < 0.001;
+
+      await App.busy(d.querySelector('[data-confirm-pay]'), async () => {
+        try {
+          const res = await App.api(`/api/bills/${bill.id}/pay`, {
+            method: 'POST',
+            body: {
+              amount: amt,
+              mark_all_paid: markAllPaid,
+              payment_method: isAccount ? 'account' : 'cash',
+              payment_account: paymentAccount,
+            },
+          });
+          d.close();
+          App.toast(res.message || 'Payment recorded successfully', 'success');
+          if (onSaved) onSaved(res.bill);
+        } catch (err) {
+          errBox.textContent = err.message;
+          errBox.classList.remove('hidden');
+        }
+      });
+    };
+
+    d.querySelector('[data-confirm-pay]').addEventListener('click', submitPayment);
+    inputAmount.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitPayment(); } });
+    setTimeout(() => inputAmount.focus(), 80);
     return d;
   };
 
@@ -444,10 +645,15 @@
     }));
 
     let curCustomer = bill.customer_name || '';
+    let curCustomerPhone = bill.customer_phone || '';
+    let curVehicleReg = bill.vehicle_reg_no || '';
+    let curCurrentMileage = bill.current_mileage || '';
+    let curNextMileage = bill.next_mileage || '';
     let curPaymentMethod = bill.payment_method || 'cash';
     let curPaymentAccount = bill.payment_account || '';
     let curDiscountType = 'amount';
     let curDiscountValue = Number(bill.discount) || 0;
+    let curAdvancePaid = (bill.advance_paid !== null && bill.advance_paid !== undefined) ? bill.advance_paid : '';
 
     const renderItemsHtml = () => {
       if (!editItems.length) {
@@ -499,11 +705,33 @@
         </div>
       </div>
 
-      <div class="row" style="margin-bottom:.5rem">
-        <div class="field" style="flex:2">
+      <div class="row" style="margin-bottom:.5rem;gap:.5rem">
+        <div class="field" style="flex:1">
           <label for="editCustomerName">Customer Name</label>
           <input id="editCustomerName" maxlength="100" placeholder="Walk-in customer" value="${App.esc(curCustomer)}">
         </div>
+        <div class="field" style="flex:1">
+          <label for="editCustomerPhone">Phone Num</label>
+          <input id="editCustomerPhone" maxlength="50" placeholder="03xxxxxxxxx" value="${App.esc(curCustomerPhone)}">
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:.5rem;gap:.5rem">
+        <div class="field" style="flex:1">
+          <label for="editVehicleReg">Registration No</label>
+          <input id="editVehicleReg" maxlength="50" placeholder="e.g. LEA-1234" style="text-transform:uppercase" value="${App.esc(curVehicleReg)}">
+        </div>
+        <div class="field" style="flex:1">
+          <label for="editCurrentMileage">Current Mileage</label>
+          <input id="editCurrentMileage" maxlength="50" placeholder="e.g. 45,000 km" value="${App.esc(curCurrentMileage)}">
+        </div>
+        <div class="field" style="flex:1">
+          <label for="editNextMileage">Next Mileage</label>
+          <input id="editNextMileage" maxlength="50" placeholder="e.g. 50,000 km" value="${App.esc(curNextMileage)}">
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:.5rem">
         <div class="field" style="flex:1">
           <label>Payment Method</label>
           <div style="display:flex;gap:.5rem;margin-top:.2rem">
@@ -571,6 +799,12 @@
           </div>
         </div>
 
+        <div class="field" style="flex:1">
+          <label for="editAdvanceVal">Advance Paid</label>
+          <input type="number" id="editAdvanceVal" min="0" step="any" placeholder="Leave empty for full payment" value="${curAdvancePaid}">
+          <div class="small muted" style="margin-top:2px">Customer advance / payment amount</div>
+        </div>
+
         <div style="flex:1;min-width:200px">
           <div class="edit-totals-card">
             <div class="edit-totals-row">
@@ -584,6 +818,14 @@
             <div class="edit-totals-row grand">
               <span>Grand Total:</span>
               <span id="editGrandDisplay">…</span>
+            </div>
+            <div class="edit-totals-row" id="editAdvRow" style="display:none;margin-top:.3rem;padding-top:.3rem;border-top:1px dashed var(--line)">
+              <span class="muted">Advance Paid:</span>
+              <span id="editAdvanceDisplay" style="font-weight:600">…</span>
+            </div>
+            <div class="edit-totals-row" id="editBalRow" style="display:none;font-weight:700">
+              <span>Remaining Balance:</span>
+              <span id="editBalanceDisplay" style="color:#dc2626">…</span>
             </div>
           </div>
         </div>
@@ -612,7 +854,16 @@
       let discount = dType === 'percent' ? Math.round((subtotal * Math.min(dVal, 100)) / 100) : dVal;
       discount = Math.min(discount, subtotal);
       const grand = Math.max(0, subtotal - discount);
-      return { subtotal, discount, grand };
+
+      const advStr = d.querySelector('#editAdvanceVal').value.trim();
+      const hasAdvance = advStr !== '';
+      let advance = hasAdvance ? Math.max(0, Number(advStr) || 0) : null;
+      let balance = null;
+      if (hasAdvance) {
+        if (advance > grand) advance = grand;
+        balance = Math.max(0, Math.round((grand - advance) * 100) / 100);
+      }
+      return { subtotal, discount, grand, hasAdvance, advance, balance };
     };
 
     const updateTotalsUi = () => {
@@ -620,6 +871,19 @@
       d.querySelector('#editSubtotalDisplay').textContent = App.money(t.subtotal);
       d.querySelector('#editDiscountDisplay').textContent = '- ' + App.money(t.discount);
       d.querySelector('#editGrandDisplay').textContent = App.money(t.grand);
+
+      const advRow = d.querySelector('#editAdvRow');
+      const balRow = d.querySelector('#editBalRow');
+      if (t.hasAdvance) {
+        advRow.style.display = 'flex';
+        balRow.style.display = 'flex';
+        d.querySelector('#editAdvanceDisplay').textContent = App.money(t.advance);
+        d.querySelector('#editBalanceDisplay').textContent = App.money(t.balance);
+        d.querySelector('#editBalanceDisplay').style.color = t.balance > 0 ? '#dc2626' : '#15803d';
+      } else {
+        advRow.style.display = 'none';
+        balRow.style.display = 'none';
+      }
     };
 
     const rerenderItems = () => {
@@ -747,6 +1011,7 @@
 
     d.querySelector('#editDiscountType').addEventListener('change', updateTotalsUi);
     d.querySelector('#editDiscountVal').addEventListener('input', updateTotalsUi);
+    d.querySelector('#editAdvanceVal').addEventListener('input', updateTotalsUi);
 
     d.querySelector('[data-cancel]').addEventListener('click', () => d.close());
 
@@ -770,13 +1035,26 @@
       const customerName = d.querySelector('#editCustomerName').value.trim();
       const discountType = d.querySelector('#editDiscountType').value;
       const discountValue = Math.max(0, Number(d.querySelector('#editDiscountVal').value) || 0);
+      const advStr = d.querySelector('#editAdvanceVal').value.trim();
+      const advancePaid = advStr !== '' ? Math.max(0, Number(advStr) || 0) : null;
+      const t = calcTotals();
+      if (advancePaid !== null && advancePaid > t.grand) {
+        errBox.textContent = `Advance amount (${App.money(advancePaid)}) cannot be greater than Grand Total (${App.money(t.grand)}).`;
+        errBox.classList.remove('hidden');
+        return;
+      }
 
       const payload = {
         customer_name: customerName,
+        customer_phone: d.querySelector('#editCustomerPhone') ? d.querySelector('#editCustomerPhone').value.trim() : null,
+        vehicle_reg_no: d.querySelector('#editVehicleReg') ? d.querySelector('#editVehicleReg').value.trim() : null,
+        current_mileage: d.querySelector('#editCurrentMileage') ? d.querySelector('#editCurrentMileage').value.trim() : null,
+        next_mileage: d.querySelector('#editNextMileage') ? d.querySelector('#editNextMileage').value.trim() : null,
         payment_method: payMethod,
         payment_account: payMethod === 'account' ? payAccount : null,
         discount_type: discountType,
         discount_value: discountValue,
+        advance_paid: advancePaid,
         items: editItems.map((it) => ({
           product_id: it.product_id,
           name: it.name,

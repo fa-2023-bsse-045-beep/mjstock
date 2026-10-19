@@ -7,6 +7,7 @@
     if ($('q').value.trim()) params.set('q', $('q').value.trim());
     if ($('date').value) params.set('date', $('date').value);
     if ($('payMethodFilter') && $('payMethodFilter').value) params.set('payment_method', $('payMethodFilter').value);
+    if ($('balanceFilter') && $('balanceFilter').value) params.set('balance_status', $('balanceFilter').value);
     if (append) params.set('offset', String(bills.length));
     try {
       const data = await App.api('/api/bills?' + params);
@@ -14,6 +15,8 @@
       $('todayTotal').textContent = App.money(data.today.total);
       if ($('todayCash')) $('todayCash').textContent = App.money(data.today.cash_total || 0);
       if ($('todayAccount')) $('todayAccount').textContent = App.money(data.today.account_total || 0);
+      if ($('todayBalance')) $('todayBalance').textContent = App.money(data.today.balance_total || 0);
+      if ($('overallPending')) $('overallPending').textContent = App.money(data.overallPending ? data.overallPending.total_pending : 0);
       $('todayCount').textContent = data.today.count;
       $('moreBtn').classList.toggle('hidden', !data.hasMore);
       render();
@@ -39,15 +42,41 @@
         ? `<span class="badge-account">💳 ${App.esc(b.payment_account || 'Account')}</span>`
         : `<span class="badge-cash">💵 Cash</span>`;
 
+      const hasAdvance = b.advance_paid !== null && b.advance_paid !== undefined;
+      const isPending = hasAdvance && Number(b.balance_due) > 0;
+      const paidSoFar = hasAdvance ? Number(b.advance_paid) : Number(b.grand_total);
+      const remainingBal = hasAdvance ? Number(b.balance_due) : 0;
+
+      let totalCell = `<div><b>${App.money(b.grand_total)}</b></div>`;
+      if (isPending) {
+        totalCell += `
+          <div class="small" style="color:#15803d;font-weight:600">Paid: ${App.money(paidSoFar)}</div>
+          <div class="small" style="color:#dc2626;font-weight:700">Pending: ${App.money(remainingBal)}</div>
+        `;
+      } else {
+        totalCell += `
+          <div class="small" style="color:#15803d;font-weight:600">Paid: ${App.money(paidSoFar)}</div>
+          <div class="small" style="color:#15803d;font-weight:700">✓ All Paid</div>
+        `;
+      }
+
       html += `<tr>
         <td><b>#${b.bill_number}</b></td>
         <td class="nowrap">${App.time(b.created_at)}</td>
-        <td>${App.esc(b.customer_name || '-')}</td>
+        <td>
+          <b>${App.esc(b.customer_name || 'Walk-in')}</b>
+          ${b.customer_phone ? `<div class="small muted">📞 ${App.esc(b.customer_phone)}</div>` : ''}
+          ${b.vehicle_reg_no ? `<div class="small" style="font-weight:600">🚗 ${App.esc(b.vehicle_reg_no)}${b.current_mileage ? ` <span class="muted" style="font-weight:normal">(${App.esc(b.current_mileage)})</span>` : ''}</div>` : ''}
+          ${isPending
+            ? `<div style="margin-top:3px"><span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-size:0.75rem;padding:2px 6px;border-radius:4px;font-weight:700">⚠️ Pending: ${App.money(remainingBal)}</span></div>`
+            : '<div style="margin-top:3px"><span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:0.72rem;padding:1px 5px;border-radius:4px;font-weight:600">✓ All Paid</span></div>'}
+        </td>
         <td>${payBadge}</td>
         <td class="num hide-sm">${b.item_count}</td>
         <td class="hide-sm">${App.esc(b.cashier_name || '-')}</td>
-        <td class="num"><b>${App.money(b.grand_total)}</b></td>
+        <td class="num">${totalCell}</td>
         <td class="actions">
+          ${isPending ? `<button class="btn btn-sm btn-primary" data-act="pay" data-id="${b.id}" style="background:#15803d;border-color:#15803d;font-weight:600" title="Receive payment / Mark All Paid">💰 Pay / Clear</button>` : ''}
           <button class="btn btn-sm" data-act="view" data-id="${b.id}">Open / Print</button>
           <button class="btn btn-sm btn-primary" data-act="edit" data-id="${b.id}">Edit</button>
           <button class="btn btn-sm btn-danger" data-act="delete" data-id="${b.id}">Delete</button>
@@ -62,9 +91,15 @@
     if (!btn) return;
     const b = bills.find((x) => x.id === Number(btn.dataset.id));
     if (!b) return;
+    if (btn.dataset.act === 'pay') {
+      try {
+        const { bill } = await App.api('/api/bills/' + b.id);
+        App.openPayBalanceModal(bill, () => load());
+      } catch (err) { App.toast(err.message, 'error'); }
+    }
     if (btn.dataset.act === 'view') {
       try {
-        App.showBill((await App.api('/api/bills/' + b.id)).bill);
+        App.showBill((await App.api('/api/bills/' + b.id)).bill, { onClose: () => load() });
       } catch (err) { App.toast(err.message, 'error'); }
     }
     if (btn.dataset.act === 'edit') {
@@ -90,9 +125,11 @@
     $('q').value = '';
     $('date').value = '';
     if ($('payMethodFilter')) $('payMethodFilter').value = '';
+    if ($('balanceFilter')) $('balanceFilter').value = '';
     load();
   });
   if ($('payMethodFilter')) $('payMethodFilter').addEventListener('change', () => load());
+  if ($('balanceFilter')) $('balanceFilter').addEventListener('change', () => load());
   $('moreBtn').addEventListener('click', () => load(true));
 
   App.init('bills').then(() => load());

@@ -50,10 +50,20 @@ function readBill(body = {}, allowPriceOverride = false) {
     ? v.text(body.payment_account, 'Account name', { required: true, max: 100 })
     : null;
 
+  let advancePaid = null;
+  if (body.advance_paid !== undefined && body.advance_paid !== null && String(body.advance_paid).trim() !== '') {
+    advancePaid = v.amount(body.advance_paid, 'Advance amount', { min: 0, max: 100000000, required: false });
+  }
+
   return {
     customer_name: v.text(body.customer_name, 'Customer name', { max: 100 }) || null,
+    customer_phone: v.text(body.customer_phone, 'Phone number', { max: 50 }) || null,
+    vehicle_reg_no: v.text(body.vehicle_reg_no, 'Registration number', { max: 50 }) || null,
+    current_mileage: v.text(body.current_mileage, 'Current mileage', { max: 50 }) || null,
+    next_mileage: v.text(body.next_mileage, 'Next mileage', { max: 50 }) || null,
     discountType,
     discountValue,
+    advancePaid,
     paymentMethod,
     paymentAccount,
     items,
@@ -62,7 +72,9 @@ function readBill(body = {}, allowPriceOverride = false) {
 
 async function loadBill(clientOrPool, id) {
   const b = await clientOrPool.query(
-    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total,
+    `SELECT b.id, b.bill_number, b.customer_name, b.customer_phone, b.vehicle_reg_no, b.current_mileage, b.next_mileage,
+            b.subtotal, b.discount, b.grand_total,
+            b.advance_paid, b.balance_due,
             b.payment_method, b.payment_account, b.created_at,
             b.created_by, u.name AS cashier_name
        FROM bills b LEFT JOIN users u ON u.id = b.created_by
@@ -125,10 +137,36 @@ router.post('/', requireApi('owner', 'cashier'), async (req, res) => {
     discountC = Math.min(discountC, subtotalC);
     const grandC = subtotalC - discountC;
 
+    let advanceC = null;
+    let balanceC = null;
+    if (input.advancePaid !== null && input.advancePaid !== undefined) {
+      advanceC = cents(input.advancePaid);
+      if (advanceC > grandC) {
+        throw new v.HttpError(400, `Advance amount (Rs. ${rupees(advanceC)}) cannot exceed Grand Total (Rs. ${rupees(grandC)})`);
+      }
+      balanceC = grandC - advanceC;
+    }
+
     const ins = await c.query(
-      `INSERT INTO bills (customer_name, subtotal, discount, grand_total, payment_method, payment_account, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, bill_number`,
-      [input.customer_name, rupees(subtotalC), rupees(discountC), rupees(grandC), input.paymentMethod, input.paymentAccount, req.user.id]
+      `INSERT INTO bills (
+        customer_name, customer_phone, vehicle_reg_no, current_mileage, next_mileage,
+        subtotal, discount, grand_total, advance_paid, balance_due, payment_method, payment_account, created_by
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, bill_number`,
+      [
+        input.customer_name,
+        input.customer_phone,
+        input.vehicle_reg_no,
+        input.current_mileage,
+        input.next_mileage,
+        rupees(subtotalC),
+        rupees(discountC),
+        rupees(grandC),
+        advanceC !== null ? rupees(advanceC) : null,
+        balanceC !== null ? rupees(balanceC) : null,
+        input.paymentMethod,
+        input.paymentAccount,
+        req.user.id
+      ]
     );
     const { id: billId, bill_number: billNumber } = ins.rows[0];
 
@@ -178,6 +216,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
   const date = req.query.date ? String(req.query.date) : '';
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new v.HttpError(400, 'Invalid date');
   const paymentMethod = req.query.payment_method ? String(req.query.payment_method) : '';
+  const balanceStatus = req.query.balance_status ? String(req.query.balance_status) : '';
   const offset = v.integer(req.query.offset || 0, 'Offset', { min: 0, max: 10000000 });
 
   const where = [];
@@ -186,9 +225,9 @@ router.get('/', requireApi('owner'), async (req, res) => {
     const digits = q.replace(/^#/, '');
     if (/^\d{1,15}$/.test(digits)) {
       params.push(Number(digits));
-      where.push(`(b.bill_number = $${params.length} OR b.customer_name ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
+      where.push(`(b.bill_number = $${params.length} OR b.customer_name ILIKE $${params.length + 1} OR b.customer_phone ILIKE $${params.length + 1} OR b.vehicle_reg_no ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
     } else {
-      where.push(`(b.customer_name ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
+      where.push(`(b.customer_name ILIKE $${params.length + 1} OR b.customer_phone ILIKE $${params.length + 1} OR b.vehicle_reg_no ILIKE $${params.length + 1} OR b.payment_account ILIKE $${params.length + 1})`);
     }
     params.push(`%${q.replace(/[\\%_]/g, (m) => '\\' + m)}%`);
   }
@@ -200,10 +239,17 @@ router.get('/', requireApi('owner'), async (req, res) => {
     params.push(paymentMethod);
     where.push(`b.payment_method = $${params.length}`);
   }
+  if (balanceStatus === 'pending') {
+    where.push('b.balance_due IS NOT NULL AND b.balance_due > 0');
+  } else if (balanceStatus === 'cleared') {
+    where.push('(b.balance_due IS NULL OR b.balance_due = 0)');
+  }
   params.push(PAGE_SIZE + 1, offset);
 
   const { rows } = await query(
-    `SELECT b.id, b.bill_number, b.customer_name, b.subtotal, b.discount, b.grand_total,
+    `SELECT b.id, b.bill_number, b.customer_name, b.customer_phone, b.vehicle_reg_no, b.current_mileage, b.next_mileage,
+            b.subtotal, b.discount, b.grand_total,
+            b.advance_paid, b.balance_due,
             b.payment_method, b.payment_account, b.created_at,
             u.name AS cashier_name,
             (SELECT COALESCE(SUM(quantity), 0) FROM bill_items bi WHERE bi.bill_id = b.id)::int AS item_count,
@@ -215,19 +261,29 @@ router.get('/', requireApi('owner'), async (req, res) => {
     params
   );
 
-  const today = await query(
-    `SELECT COALESCE(SUM(grand_total), 0) AS total,
-            COUNT(*)::int AS count,
-            COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_total,
-            COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_total
-       FROM bills WHERE (created_at AT TIME ZONE $1)::date = (NOW() AT TIME ZONE $1)::date`,
-    [TZ]
-  );
+  const [today, overall] = await Promise.all([
+    query(
+      `SELECT COALESCE(SUM(grand_total), 0) AS total,
+              COUNT(*)::int AS count,
+              COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) AS cash_total,
+              COALESCE(SUM(CASE WHEN payment_method = 'account' THEN grand_total ELSE 0 END), 0) AS account_total,
+              COALESCE(SUM(COALESCE(balance_due, 0)), 0) AS balance_total,
+              COALESCE(SUM(COALESCE(advance_paid, 0)), 0) AS advance_total
+         FROM bills WHERE (created_at AT TIME ZONE $1)::date = (NOW() AT TIME ZONE $1)::date`,
+      [TZ]
+    ),
+    query(
+      `SELECT COALESCE(SUM(balance_due), 0) AS total_pending,
+              COUNT(*)::int AS pending_count
+         FROM bills WHERE balance_due IS NOT NULL AND balance_due > 0`
+    ),
+  ]);
 
   res.json({
     bills: rows.slice(0, PAGE_SIZE),
     hasMore: rows.length > PAGE_SIZE,
     today: today.rows[0],
+    overallPending: overall.rows[0],
   });
 });
 
@@ -354,6 +410,16 @@ router.put('/:id', requireApi('owner'), async (req, res) => {
     discountC = Math.min(discountC, subtotalC);
     const grandC = subtotalC - discountC;
 
+    let advanceC = null;
+    let balanceC = null;
+    if (input.advancePaid !== null && input.advancePaid !== undefined) {
+      advanceC = cents(input.advancePaid);
+      if (advanceC > grandC) {
+        throw new v.HttpError(400, `Advance amount (Rs. ${rupees(advanceC)}) cannot exceed Grand Total (Rs. ${rupees(grandC)})`);
+      }
+      balanceC = grandC - advanceC;
+    }
+
     // 7. Replace bill_items
     await c.query('DELETE FROM bill_items WHERE bill_id = $1', [billId]);
     await c.query(
@@ -374,17 +440,29 @@ router.put('/:id', requireApi('owner'), async (req, res) => {
     await c.query(
       `UPDATE bills
           SET customer_name = $1,
-              subtotal = $2,
-              discount = $3,
-              grand_total = $4,
-              payment_method = $5,
-              payment_account = $6
-        WHERE id = $7`,
+              customer_phone = $2,
+              vehicle_reg_no = $3,
+              current_mileage = $4,
+              next_mileage = $5,
+              subtotal = $6,
+              discount = $7,
+              grand_total = $8,
+              advance_paid = $9,
+              balance_due = $10,
+              payment_method = $11,
+              payment_account = $12
+        WHERE id = $13`,
       [
         input.customer_name,
+        input.customer_phone,
+        input.vehicle_reg_no,
+        input.current_mileage,
+        input.next_mileage,
         rupees(subtotalC),
         rupees(discountC),
         rupees(grandC),
+        advanceC !== null ? rupees(advanceC) : null,
+        balanceC !== null ? rupees(balanceC) : null,
         input.paymentMethod,
         input.paymentAccount,
         billId,
@@ -398,6 +476,63 @@ router.put('/:id', requireApi('owner'), async (req, res) => {
   if (process.env.VERCEL) await pending;
 
   res.json({ bill, alerts, message: 'Bill updated successfully' });
+});
+
+// Pay off or reduce remaining balance (owner or cashier).
+router.post('/:id/pay', requireApi('owner', 'cashier'), async (req, res) => {
+  const id = v.id(req.params.id);
+  const markAllPaid = req.body.mark_all_paid === true || req.body.mark_all_paid === 'true';
+  const paymentMethod = ['cash', 'account'].includes(req.body.payment_method) ? req.body.payment_method : 'cash';
+  const paymentAccount = paymentMethod === 'account'
+    ? v.text(req.body.payment_account, 'Account name', { required: true, max: 100 })
+    : null;
+
+  const result = await withTransaction(async (c) => {
+    const bRes = await c.query('SELECT * FROM bills WHERE id = $1 FOR UPDATE', [id]);
+    if (!bRes.rows.length) throw new v.HttpError(404, 'Bill not found');
+    const b = bRes.rows[0];
+
+    const grandTotal = Number(b.grand_total);
+    const currentBal = b.balance_due !== null ? Number(b.balance_due) : 0;
+    const currentPaid = b.advance_paid !== null ? Number(b.advance_paid) : (b.balance_due !== null ? Math.max(0, grandTotal - currentBal) : grandTotal);
+
+    if (currentBal <= 0) {
+      throw new v.HttpError(400, 'This bill is already fully paid (مکمل ادا ہو چکا ہے)');
+    }
+
+    let payAmount;
+    if (markAllPaid) {
+      payAmount = currentBal;
+    } else {
+      payAmount = v.amount(req.body.amount, 'Payment amount', { min: 0.01, max: 100000000 });
+      if (payAmount > currentBal) {
+        throw new v.HttpError(400, `Payment amount (Rs. ${payAmount}) cannot exceed remaining balance (Rs. ${currentBal})`);
+      }
+    }
+
+    const newPaid = Math.min(grandTotal, Math.round((currentPaid + payAmount) * 100) / 100);
+    const newBal = Math.max(0, Math.round((currentBal - payAmount) * 100) / 100);
+
+    await c.query(
+      `UPDATE bills
+          SET advance_paid = $1,
+              balance_due = $2,
+              payment_method = CASE WHEN $3 = 'account' THEN 'account' ELSE payment_method END,
+              payment_account = CASE WHEN $3 = 'account' THEN $4 ELSE payment_account END
+        WHERE id = $5`,
+      [newPaid, newBal, paymentMethod, paymentAccount, id]
+    );
+
+    const updated = await loadBill(c, id);
+    return { bill: updated, payAmount, newBal };
+  });
+
+  res.json({
+    bill: result.bill,
+    message: result.newBal > 0
+      ? `Payment of Rs. ${result.payAmount} received. Remaining Balance: Rs. ${result.newBal}`
+      : `Payment received! Bill #${result.bill.bill_number} is now ALL PAID (مکمل ادا شدہ).`
+  });
 });
 
 // Delete a bill and give the stock back (owner only).

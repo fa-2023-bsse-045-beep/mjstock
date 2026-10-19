@@ -9,7 +9,8 @@ const TZ = process.env.SHOP_TIMEZONE || 'Asia/Karachi';
 router.get('/', requireApi('owner'), async (req, res) => {
   const [today, products, alerts, recent] = await Promise.all([
     query(
-      `SELECT COALESCE(SUM(grand_total), 0) AS total, COUNT(*)::int AS count
+      `SELECT COALESCE(SUM(grand_total), 0) AS total, COUNT(*)::int AS count,
+              COALESCE(SUM(COALESCE(balance_due, 0)), 0) AS balance_total
          FROM bills WHERE (created_at AT TIME ZONE $1)::date = (NOW() AT TIME ZONE $1)::date`,
       [TZ]
     ),
@@ -20,7 +21,7 @@ router.get('/', requireApi('owner'), async (req, res) => {
         ORDER BY p.stock_qty, LOWER(p.name)`
     ),
     query(
-      `SELECT b.id, b.bill_number, b.customer_name, b.grand_total, b.created_at, u.name AS cashier_name
+      `SELECT b.id, b.bill_number, b.customer_name, b.grand_total, b.advance_paid, b.balance_due, b.created_at, u.name AS cashier_name
          FROM bills b LEFT JOIN users u ON u.id = b.created_by
         ORDER BY b.created_at DESC, b.id DESC LIMIT 8`
     ),
