@@ -9,6 +9,7 @@
     loadBills(true);
 
     const btnRecord = document.getElementById('btnRecordBill');
+    // Record Bill button removed — only salesmen can create bills
     if (btnRecord) btnRecord.addEventListener('click', openRecordBillModal);
 
     document.getElementById('filterSalesman').addEventListener('change', () => loadBills(true));
@@ -337,19 +338,25 @@
       }
 
       const isCash = radCash.checked;
+      const txn = (d.querySelector('#payTxnInput')?.value || '').trim();
+      const bankAcc = (d.querySelector('#payBankInput')?.value || '').trim() || null;
+      const proof = (d.querySelector('#payProofInput')?.value || '').trim() || null;
+      if (!isCash && !txn) {
+        errBox.textContent = 'Transfer ID / Transaction ID is required for bank transfer.';
+        errBox.classList.remove('hidden');
+        d.querySelector('#payTxnInput')?.focus();
+        return;
+      }
+
       await App.busy(d.querySelector('[data-confirm-pay]'), async () => {
         try {
           if (isCash) {
-            const recv = d.querySelector('#payRecvInput').value.trim() || 'Admin';
+            const recv = (d.querySelector('#payRecvInput')?.value || '').trim() || 'Admin';
             await App.api('/api/salesman/payments/cash', {
               method: 'POST',
               body: { salesman_id: bill.salesman_id, bill_id: bill.id, amount: amt, payment_date: date, received_by: recv, notes },
             });
           } else {
-            const txn = d.querySelector('#payTxnInput').value.trim();
-            const bankAcc = d.querySelector('#payBankInput').value.trim() || null;
-            const proof = d.querySelector('#payProofInput').value.trim() || null;
-            if (!txn) throw new Error('Transfer ID / Transaction ID is required.');
             await App.api('/api/salesman/payments/bank', {
               method: 'POST',
               body: { salesman_id: bill.salesman_id, bill_id: bill.id, amount: amt, transfer_date: date, transfer_id: txn, bank_account: bankAcc, proof_note: proof, notes },

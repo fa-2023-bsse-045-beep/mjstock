@@ -371,7 +371,7 @@ router.post('/payments/cash', requireApi('owner', 'salesman'), async (req, res) 
   }
   const isOwner = req.user.role === 'owner';
   let salesman_id = !isOwner ? req.user.id : (body.salesman_id ? v.id(body.salesman_id, 'Salesman') : null);
-  const bill_id = body.bill_id ? v.id(body.bill_id, 'Bill') : null;
+  let bill_id = body.bill_id ? v.id(body.bill_id, 'Bill') : null;
 
   if (isOwner && !salesman_id && bill_id) {
     const bCheck = await query('SELECT salesman_id FROM salesman_bills WHERE id=$1', [bill_id]);
@@ -470,7 +470,7 @@ router.post('/payments/bank', requireApi('owner', 'salesman'), async (req, res) 
   }
   const isOwner = req.user.role === 'owner';
   let salesman_id = !isOwner ? req.user.id : (body.salesman_id ? v.id(body.salesman_id, 'Salesman') : null);
-  const bill_id = body.bill_id ? v.id(body.bill_id, 'Bill') : null;
+  let bill_id = body.bill_id ? v.id(body.bill_id, 'Bill') : null;
 
   if (isOwner && !salesman_id && bill_id) {
     const bCheck = await query('SELECT salesman_id FROM salesman_bills WHERE id=$1', [bill_id]);
