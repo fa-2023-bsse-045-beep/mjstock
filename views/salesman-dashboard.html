@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salesman Dashboard · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .stat-due {
+      border: 2px solid #e11d48 !important;
+      background: #fff1f2 !important;
+    }
+    .stat-due .value {
+      color: #be123c !important;
+      font-weight: 800;
+    }
+    .stat-due .label {
+      color: #9f1239 !important;
+      font-weight: 700;
+    }
+    .badge-cash {
+      background: #dcfce7;
+      color: #15803d;
+      padding: .2rem .5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: .8rem;
+    }
+    .badge-bank {
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: .2rem .5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: .8rem;
+    }
+    .tid-code {
+      font-family: monospace;
+      font-weight: 700;
+      background: #f1f5f9;
+      padding: .15rem .4rem;
+      border-radius: 4px;
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Salesman Dashboard (سیلز مین ڈیش بورڈ)</h1>
+        <div class="small muted">Delivery tracking, payments received from MJ Autos &amp; outstanding due balance</div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" id="btnRecordPayment" style="background:#15803d;border-color:#15803d">+ Record Payment Received (رقم وصولی درج کریں)</button>
+        <a class="btn btn-dark btn-lg" href="/my-sales">+ New Delivery Bill</a>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      <div class="stat stat-due">
+        <div class="label">Total Due (بقایا واجب الادا رقم)</div>
+        <div class="value" id="statTotalDue">PKR 0</div>
+        <div class="small muted" style="margin-top:.25rem">Amount owed to you by MJ Autos</div>
+      </div>
+      <div class="stat good">
+        <div class="label">Total Received (کل وصول شدہ رقم)</div>
+        <div class="value" id="statTotalPaid">PKR 0</div>
+        <div class="small muted" style="margin-top:.25rem">Cash + Bank transfers</div>
+      </div>
+      <div class="stat">
+        <div class="label">Cash Received (نقد وصولی)</div>
+        <div class="value" id="statTotalCash">PKR 0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Bank Received (بینک ٹرانسفر)</div>
+        <div class="value" id="statTotalBank">PKR 0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Total Bills Delivered</div>
+        <div class="value" id="statBillCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Total Units Delivered</div>
+        <div class="value" id="statTotalUnits">0 units</div>
+      </div>
+    </div>
+
+    <!-- Payments Received Section -->
+    <div style="margin-top:1.5rem">
+      <section class="card">
+        <div class="page-head" style="margin-bottom:.5rem">
+          <div>
+            <h2 style="margin:0">Payments Received from MJ Autos (وصول شدہ رقوم)</h2>
+            <div class="small muted">Record cash or bank account transfers with TID (Transaction ID)</div>
+          </div>
+          <button class="btn btn-sm btn-primary" id="btnRecordPaymentTable" style="background:#15803d;border-color:#15803d">+ Add Payment</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type (طریقہ)</th>
+                <th>TID / Reference</th>
+                <th>Bank / Account</th>
+                <th class="num">Amount Received</th>
+                <th>Bill #</th>
+                <th>Proof / Notes</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsBody"><tr><td colspan="7" class="empty">Loading payments…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Recent Product Deliveries Section -->
+    <div style="margin-top:1.5rem">
+      <section class="card">
+        <div class="page-head" style="margin-bottom:.5rem">
+          <div>
+            <h2 style="margin:0">Recent Product Deliveries (مصنوعات کی ترسیل)</h2>
+            <div class="small muted">Bills submitted for products delivered to MJ Autos</div>
+          </div>
+          <a href="/my-sales" class="small">All delivery bills →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Bill #</th>
+                <th>Delivery Date</th>
+                <th class="num">Units Delivered</th>
+                <th class="num">Grand Total</th>
+                <th class="num">Paid</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th class="actions"></th>
+              </tr>
+            </thead>
+            <tbody id="recentBillsBody"><tr><td colspan="8" class="empty">Loading deliveries…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/salesman-dashboard.js"></script>
+</body>
+</html>

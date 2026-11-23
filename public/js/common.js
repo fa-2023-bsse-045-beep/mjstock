@@ -24,7 +24,7 @@
     const opts = { method, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'MJAutos' } };
     if (body !== undefined) {
       opts.headers['Content-Type'] = 'application/json';
-      opts.body = JSON.stringify(body);
+      opts.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
     let res;
     try {
@@ -113,14 +113,19 @@
 
   // ---------- Header, nav, bell ----------
   const NAV = [
-    { href: '/dashboard', label: 'Dashboard', key: 'dashboard', owner: true },
-    { href: '/pos', label: 'New Bill', key: 'pos' },
-    { href: '/products', label: 'Products', key: 'products', owner: true },
-    { href: '/stock', label: 'Stock Report', key: 'stock', owner: true },
-    { href: '/bills', label: 'Bill History', key: 'bills', owner: true },
-    { href: '/expenses', label: 'Monthly Records', key: 'expenses', owner: true },
-    { href: '/my-expenses', label: 'My Expenses', key: 'my-expenses', cashier: true },
-    { href: '/users', label: 'Users', key: 'users', owner: true },
+    { href: '/dashboard',          label: 'Dashboard',       key: 'dashboard',          owner: true },
+    { href: '/pos',                label: 'New Bill',        key: 'pos',                cashier: true, ownerCashier: true },
+    { href: '/products',           label: 'Products',        key: 'products',           owner: true },
+    { href: '/stock',              label: 'Stock Report',    key: 'stock',              owner: true },
+    { href: '/bills',              label: 'Bill History',       key: 'bills',              owner: true },
+    { href: '/salesman-bills',     label: 'Salesman Bills',     key: 'salesman-bills',     owner: true },
+    { href: '/salesman-payments',  label: 'Salesman Payments',  key: 'salesman-payments',  owner: true },
+    { href: '/expenses',           label: 'Monthly Records',    key: 'expenses',           owner: true },
+    { href: '/users',              label: 'Users',              key: 'users',              owner: true },
+    // Salesman-only
+    { href: '/salesman-dashboard', label: 'Dashboard',          key: 'salesman-dashboard', salesman: true },
+    { href: '/my-sales',           label: 'Delivery Bills',     key: 'my-sales',           salesman: true },
+    { href: '/my-expenses',        label: 'My Expenses',     key: 'my-expenses',        cashier: true },
   ];
   const BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 
@@ -128,8 +133,11 @@
     const header = document.getElementById('appHeader');
     header.className = 'app-header';
     const links = NAV.filter((n) => {
-      if (n.owner && App.user.role !== 'owner') return false;
-      if (n.cashier && App.user.role !== 'cashier') return false;
+      const role = App.user.role;
+      if (n.owner && role !== 'owner') return false;
+      if (n.cashier && role !== 'cashier') return false;
+      if (n.salesman && role !== 'salesman') return false;
+      if (n.ownerCashier && role !== 'owner' && role !== 'cashier') return false;
       return true;
     })
       .map((n) => `<a href="${n.href}" class="${n.key === active ? 'active' : ''}">${n.label}</a>`)
@@ -173,6 +181,7 @@
 
   App.alerts = [];
   App.refreshAlerts = async function () {
+    if (App.user && App.user.role === 'salesman') return;
     try {
       const { products } = await App.api('/api/products/alerts');
       App.alerts = products;

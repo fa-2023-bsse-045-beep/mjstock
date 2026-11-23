@@ -12,6 +12,40 @@
       $('productCount').textContent = d.productCount;
       $('alertCount').textContent = d.alerts.length;
 
+      // Populate Salesman Overview
+      if (d.salesmenOverview) {
+        const t = d.salesmenOverview.totals;
+        if ($('smDashBillsCount')) $('smDashBillsCount').textContent = t.total_bills || 0;
+        if ($('smDashBillsAmount')) $('smDashBillsAmount').textContent = App.money(t.total_bill_amount || 0);
+        if ($('smDashCashPaid')) $('smDashCashPaid').textContent = App.money(t.total_cash || 0);
+        if ($('smDashBankPaid')) $('smDashBankPaid').textContent = App.money(t.total_bank || 0);
+        if ($('smDashTotalPaid')) $('smDashTotalPaid').textContent = App.money(t.total_paid || 0);
+        if ($('smDashOutstanding')) $('smDashOutstanding').textContent = App.money(t.total_pending || 0);
+
+        const smTable = $('smDashTableBody');
+        if (smTable) {
+          const list = d.salesmenOverview.salesmen || [];
+          if (!list.length) {
+            smTable.innerHTML = '<tr><td colspan="8" class="empty">No salesmen accounts created yet. <a href="/users">Add a salesman</a> to get started.</td></tr>';
+          } else {
+            smTable.innerHTML = list.map(s => `
+              <tr>
+                <td><b>${App.esc(s.name)}</b></td>
+                <td class="num">${s.bill_count}</td>
+                <td class="num">${App.money(s.total_bill_amount)}</td>
+                <td class="num">${App.money(s.cash_paid)}</td>
+                <td class="num">${App.money(s.bank_paid)}</td>
+                <td class="num"><b>${App.money(s.total_paid)}</b></td>
+                <td class="num" style="font-weight:700;color:${s.remaining_balance > 0 ? '#b91c1c' : '#15803d'}">${App.money(s.remaining_balance)}</td>
+                <td class="actions">
+                  <a href="/salesman-ledger?id=${s.id}" class="btn btn-sm btn-dark">Open Ledger →</a>
+                </td>
+              </tr>
+            `).join('');
+          }
+        }
+      }
+
       $('alertRows').innerHTML = d.alerts.length
         ? d.alerts
             .map(

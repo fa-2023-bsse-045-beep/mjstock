@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salesman Payment Tracking · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Salesman Payment Tracking</h1>
+        <div class="small muted">Record payments made to salesmen against their product delivery bills</div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary" id="addCashBtn">+ Cash Payment to Salesman</button>
+        <button class="btn btn-dark" id="addBankBtn">+ Bank Transfer to Salesman</button>
+        <a href="/salesman-bills" class="btn">📄 Delivery Bills</a>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="stats" id="summaryCards">
+      <div class="stat"><div class="label">Total Bills Received</div><div class="value" id="gTotalBillsCount">…</div></div>
+      <div class="stat"><div class="label">Total Amount of Bills</div><div class="value" id="gTotalBillsAmount">…</div></div>
+      <div class="stat good"><div class="label">Total Cash Paid</div><div class="value" id="gTotalCash">…</div></div>
+      <div class="stat good"><div class="label">Total Bank Transfers Paid</div><div class="value" id="gTotalBank">…</div></div>
+      <div class="stat good"><div class="label">Total Payments</div><div class="value" id="gTotalPaid">…</div></div>
+      <div class="stat warn" style="border-left-color:#ef4444"><div class="label">Total Outstanding Balance</div><div class="value" id="gPending" style="color:#dc2626">…</div></div>
+    </div>
+
+    <!-- Per-Salesman summary table -->
+    <section class="card" style="margin-bottom:1rem">
+      <div class="page-head" style="margin-bottom:.75rem">
+        <h2 style="margin:0">Salesman-wise Account Summary</h2>
+        <div class="small muted">Click on any salesman to open their complete transaction ledger</div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>Salesman Name</th>
+            <th class="num">Total Bills</th>
+            <th class="num">Total Bill Amount</th>
+            <th class="num">Cash Paid</th>
+            <th class="num">Bank Paid</th>
+            <th class="num">Total Paid</th>
+            <th class="num">Remaining Balance</th>
+            <th class="actions"></th>
+          </tr></thead>
+          <tbody id="summaryBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Payment history tabs -->
+    <section class="card">
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem;border-bottom:1px solid var(--line);padding-bottom:.5rem;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary tab-btn active" data-tab="cash">💵 Cash Payments History</button>
+        <button class="btn tab-btn" data-tab="bank">🏦 Bank Transfers History</button>
+        <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+          <label style="margin:0;font-size:.85rem;color:var(--muted)">Filter by Salesman:</label>
+          <select id="filterSalesman" style="width:190px"><option value="">All Salesmen</option></select>
+        </div>
+      </div>
+
+      <!-- Cash payments table -->
+      <div id="tabCash">
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>Payment Date</th>
+              <th>Salesman</th>
+              <th>Against Bill</th>
+              <th>Handled / Paid By</th>
+              <th class="num">Cash Amount</th>
+              <th>Notes</th>
+              <th class="actions"></th>
+            </tr></thead>
+            <tbody id="cashBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Bank payments table -->
+      <div id="tabBank" class="hidden">
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>Transfer Date</th>
+              <th>Salesman</th>
+              <th>Against Bill</th>
+              <th>Bank Account</th>
+              <th>Transfer ID / TXN</th>
+              <th class="num">Transfer Amount</th>
+              <th>Proof / Notes</th>
+              <th class="actions"></th>
+            </tr></thead>
+            <tbody id="bankBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/salesman-payments.js"></script>
+</body>
+</html>

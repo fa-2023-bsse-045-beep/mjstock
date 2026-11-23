@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bills Received from Salesmen · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Bills Received from Salesmen</h1>
+        <div class="small muted">Track products purchased/delivered from salesmen and payments made against them</div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" id="btnRecordBill" style="background:#15803d;border-color:#15803d">+ Record Bill Received (نیا بل درج کریں)</button>
+        <a href="/salesman-payments" class="btn btn-dark btn-lg">💰 Payment Tracking</a>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <section class="card" style="margin-bottom:1rem">
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="margin:0;flex:1;min-width:160px">
+          <label>Salesman</label>
+          <select id="filterSalesman"><option value="">All Salesmen</option></select>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:160px">
+          <label>Payment Status</label>
+          <select id="filterStatus">
+            <option value="">All Payment Statuses</option>
+            <option value="pending">Pending (Unpaid / Partial)</option>
+            <option value="unpaid">Unpaid (No Payment)</option>
+            <option value="partial">Partially Paid</option>
+            <option value="paid">Fully Paid</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;flex:0 0 160px">
+          <label>Date</label>
+          <input type="date" id="filterDate">
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:160px">
+          <label>Search</label>
+          <input type="search" id="filterQ" placeholder="Bill # or salesman name">
+        </div>
+        <button class="btn" id="clearFilter">Clear</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>Bill #</th>
+            <th>Salesman</th>
+            <th>Date &amp; Time</th>
+            <th class="num">Delivered Qty</th>
+            <th class="num">Total Amount</th>
+            <th class="num">Paid Amount</th>
+            <th class="num">Outstanding Balance</th>
+            <th>Status</th>
+            <th class="actions">Actions</th>
+          </tr></thead>
+          <tbody id="billsBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="loadMoreWrap" class="hidden" style="text-align:center;padding:.75rem">
+        <button class="btn" id="loadMoreBtn">Load more</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/salesman-bills.js"></script>
+</body>
+</html>

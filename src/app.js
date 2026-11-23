@@ -54,6 +54,7 @@ app.use('/api/stock', require('./routes/stock'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/salesman', require('./routes/salesman'));
 app.use('/api', (req, res, next) => next(new HttpError(404, 'Not found')));
 
 // ---------- Pages (every page except /login requires a session) ----------
@@ -64,19 +65,34 @@ const page = (file) => (req, res) => {
 
 app.get('/login', async (req, res, next) => {
   const user = await loadUser(req);
-  if (user) return res.redirect(user.role === 'owner' ? '/dashboard' : '/pos');
+  if (user) {
+    if (user.role === 'owner') return res.redirect('/dashboard');
+    if (user.role === 'salesman') return res.redirect('/salesman-dashboard');
+    return res.redirect('/pos');
+  }
   page('login.html')(req, res, next);
 });
 
-app.get('/', requirePage(), (req, res) => res.redirect(req.user.role === 'owner' ? '/dashboard' : '/pos'));
-app.get('/pos', requirePage(), page('pos.html'));
+app.get('/', requirePage(), (req, res) => {
+  if (req.user.role === 'owner') return res.redirect('/dashboard');
+  if (req.user.role === 'salesman') return res.redirect('/salesman-dashboard');
+  return res.redirect('/pos');
+});
+app.get('/pos', requirePage('owner', 'cashier'), page('pos.html'));
 app.get('/dashboard', requirePage('owner'), page('dashboard.html'));
 app.get('/products', requirePage('owner'), page('products.html'));
 app.get('/bills', requirePage('owner'), page('bills.html'));
 app.get('/stock', requirePage('owner'), page('stock.html'));
 app.get('/users', requirePage('owner'), page('users.html'));
 app.get('/expenses', requirePage('owner'), page('expenses.html'));
-app.get('/my-expenses', requirePage(), page('my-expenses.html'));
+app.get('/my-expenses', requirePage('owner', 'cashier'), page('my-expenses.html'));
+// Salesman pages
+app.get('/salesman-dashboard', requirePage('owner', 'salesman'), page('salesman-dashboard.html'));
+app.get('/my-sales', requirePage('owner', 'salesman'), page('my-sales.html'));
+// Admin-only salesman management
+app.get('/salesman-bills', requirePage('owner'), page('salesman-bills.html'));
+app.get('/salesman-payments', requirePage('owner'), page('salesman-payments.html'));
+app.get('/salesman-ledger', requirePage('owner'), page('salesman-ledger.html'));
 
 app.use((req, res) => {
   if (/\.[a-z0-9]+$/i.test(req.path)) return res.status(404).type('text').send('Not found'); // missing file

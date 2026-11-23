@@ -101,3 +101,79 @@ CREATE TABLE IF NOT EXISTS expenses (
 );
 CREATE INDEX IF NOT EXISTS expenses_created_at_idx  ON expenses (created_at DESC);
 CREATE INDEX IF NOT EXISTS expenses_created_by_idx  ON expenses (created_by, created_at DESC);
+
+-- ============================================================
+-- SALESMAN SALES, BILLING & PAYMENT TRACKING SYSTEM
+-- ============================================================
+
+-- Allow 'salesman' as a valid user role (safe re-run: DO block)
+DO $$
+BEGIN
+  ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+  ALTER TABLE users ADD CONSTRAINT users_role_check
+    CHECK (role IN ('owner','cashier','salesman'));
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+-- Auto-incrementing bill number for salesman bills
+CREATE SEQUENCE IF NOT EXISTS salesman_bill_number_seq START WITH 5001;
+
+-- Salesman Bills
+CREATE TABLE IF NOT EXISTS salesman_bills (
+  id               SERIAL PRIMARY KEY,
+  bill_number      BIGINT        NOT NULL UNIQUE DEFAULT nextval('salesman_bill_number_seq'),
+  salesman_id      INTEGER       NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  notes            TEXT,
+  subtotal         NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
+  grand_total      NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (grand_total >= 0),
+  created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS salesman_bills_salesman_idx  ON salesman_bills (salesman_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS salesman_bills_created_idx   ON salesman_bills (created_at DESC);
+
+-- Line items within each salesman bill
+CREATE TABLE IF NOT EXISTS salesman_bill_items (
+  id           SERIAL PRIMARY KEY,
+  bill_id      INTEGER       NOT NULL REFERENCES salesman_bills(id) ON DELETE CASCADE,
+  product_id   INTEGER       REFERENCES products(id) ON DELETE SET NULL,
+  item_name    VARCHAR(150)  NOT NULL,
+  unit_price   NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
+  quantity     INTEGER       NOT NULL CHECK (quantity > 0),
+  line_total   NUMERIC(12,2) NOT NULL CHECK (line_total >= 0)
+);
+CREATE INDEX IF NOT EXISTS salesman_bill_items_bill_idx ON salesman_bill_items (bill_id);
+
+-- Cash payments from salesman to company (or payment made to salesman against bill)
+CREATE TABLE IF NOT EXISTS salesman_cash_payments (
+  id            SERIAL PRIMARY KEY,
+  salesman_id   INTEGER       NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  bill_id       INTEGER       REFERENCES salesman_bills(id) ON DELETE SET NULL,
+  amount        NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  payment_date  DATE          NOT NULL DEFAULT CURRENT_DATE,
+  received_by   VARCHAR(100)  NOT NULL,
+  notes         TEXT,
+  recorded_by   INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+ALTER TABLE salesman_cash_payments ADD COLUMN IF NOT EXISTS bill_id INTEGER REFERENCES salesman_bills(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS salesman_cash_payments_salesman_idx ON salesman_cash_payments (salesman_id, payment_date DESC);
+CREATE INDEX IF NOT EXISTS salesman_cash_payments_bill_idx ON salesman_cash_payments (bill_id);
+
+-- Bank transfer payments from company to salesman
+CREATE TABLE IF NOT EXISTS salesman_bank_payments (
+  id              SERIAL PRIMARY KEY,
+  salesman_id     INTEGER       NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  bill_id         INTEGER       REFERENCES salesman_bills(id) ON DELETE SET NULL,
+  amount          NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  bank_account    VARCHAR(100),
+  transfer_date   DATE          NOT NULL DEFAULT CURRENT_DATE,
+  transfer_id     VARCHAR(100)  NOT NULL,
+  proof_note      TEXT,
+  notes           TEXT,
+  recorded_by     INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+ALTER TABLE salesman_bank_payments ADD COLUMN IF NOT EXISTS bill_id INTEGER REFERENCES salesman_bills(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS salesman_bank_payments_txn_unique ON salesman_bank_payments (LOWER(transfer_id));
+CREATE INDEX IF NOT EXISTS salesman_bank_payments_salesman_idx ON salesman_bank_payments (salesman_id, transfer_date DESC);
+CREATE INDEX IF NOT EXISTS salesman_bank_payments_bill_idx ON salesman_bank_payments (bill_id);

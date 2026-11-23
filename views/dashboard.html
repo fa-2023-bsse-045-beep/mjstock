@@ -50,6 +50,51 @@
         </div>
       </section>
     </div>
+
+    <!-- Salesman Purchases & Payments Section -->
+    <section class="card" style="margin-top:1.5rem">
+      <div class="page-head" style="margin-bottom:.75rem">
+        <div>
+          <h2 style="margin:0">📦 Salesman Purchases &amp; Supplier Tracking</h2>
+          <div class="small muted">Products purchased from salesmen, payments made to them, and outstanding balances</div>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <a href="/salesman-bills" class="btn btn-sm">📄 View Bills</a>
+          <a href="/salesman-payments" class="btn btn-sm btn-primary">💰 Record Payment</a>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="stats" style="margin-bottom:1rem">
+        <div class="stat"><div class="label">Total Bills Received</div><div class="value" id="smDashBillsCount">0</div></div>
+        <div class="stat"><div class="label">Total Bill Amount</div><div class="value" id="smDashBillsAmount">Rs 0</div></div>
+        <div class="stat good"><div class="label">Total Cash Paid</div><div class="value" id="smDashCashPaid">Rs 0</div></div>
+        <div class="stat good"><div class="label">Total Bank Paid</div><div class="value" id="smDashBankPaid">Rs 0</div></div>
+        <div class="stat good"><div class="label">Total Payments</div><div class="value" id="smDashTotalPaid">Rs 0</div></div>
+        <div class="stat warn" style="border-left-color:#ef4444"><div class="label">Total Outstanding Balance</div><div class="value" id="smDashOutstanding" style="color:#dc2626">Rs 0</div></div>
+      </div>
+
+      <!-- Salesman-wise summary table -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Salesman Name</th>
+              <th class="num">Total Bills</th>
+              <th class="num">Total Bill Amount</th>
+              <th class="num">Cash Paid</th>
+              <th class="num">Bank Paid</th>
+              <th class="num">Total Paid</th>
+              <th class="num">Remaining Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="smDashTableBody">
+            <tr><td colspan="8" class="empty">Loading salesmen summary…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
   <script src="/js/common.js"></script>
   <script src="/js/dashboard.js"></script>

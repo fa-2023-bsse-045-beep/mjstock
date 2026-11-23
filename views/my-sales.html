@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product Delivery Bills · MJ AUTOS</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .stat-due {
+      border: 2px solid #e11d48 !important;
+      background: #fff1f2 !important;
+    }
+    .stat-due .value {
+      color: #be123c !important;
+      font-weight: 800;
+    }
+    .stat-due .label {
+      color: #9f1239 !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header id="appHeader" class="app-header"></header>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Product Delivery Bills (مصنوعات کی ترسیل کا بل)</h1>
+        <div class="small muted">Record products delivered to MJ Autos and view payment status</div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" id="recordPaymentBtn" style="background:#15803d;border-color:#15803d">+ Record Payment (رقم وصولی درج کریں)</button>
+        <button class="btn btn-dark btn-lg" id="newBillBtn">+ Create Delivery Bill</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="stats" id="salesmanStats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      <div class="stat stat-due">
+        <div class="label">Total Due (بقایا واجب الادا رقم)</div>
+        <div class="value" id="statTotalDue">PKR 0</div>
+        <div class="small muted">Amount owed to you by MJ Autos</div>
+      </div>
+      <div class="stat good">
+        <div class="label">Total Received (کل وصولی)</div>
+        <div class="value" id="statTotalPaid">PKR 0</div>
+        <div class="small muted">Cash + Bank transfers</div>
+      </div>
+      <div class="stat">
+        <div class="label">Total Bills Delivered</div>
+        <div class="value" id="statBillCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Total Units Delivered</div>
+        <div class="value" id="statTotalUnits">0 units</div>
+      </div>
+    </div>
+
+    <!-- Bill list -->
+    <section class="card" style="margin-top:1rem">
+      <div class="page-head" style="margin-bottom:.75rem">
+        <div>
+          <h2 style="margin:0">My Submitted Delivery Bills</h2>
+          <div class="small muted">All delivery invoices submitted to MJ Autos</div>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <input type="date" id="filterDate" style="width:160px">
+          <input type="search" id="filterQ" placeholder="Search bill #…" style="width:170px">
+          <button class="btn btn-sm" id="clearFilter">Clear</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>Bill #</th>
+            <th>Date &amp; Time</th>
+            <th class="num">Units</th>
+            <th class="num">Total Amount</th>
+            <th class="num">Paid Amount</th>
+            <th class="num">Balance Due</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th class="actions">Action</th>
+          </tr></thead>
+          <tbody id="billsBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="loadMoreWrap" class="hidden" style="text-align:center;padding:.75rem">
+        <button class="btn" id="loadMoreBtn">Load more</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/my-sales.js"></script>
+</body>
+</html>

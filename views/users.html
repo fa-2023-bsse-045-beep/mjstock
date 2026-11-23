@@ -22,14 +22,21 @@
         </div>
       </section>
       <section class="card">
-        <h2>Add cashier</h2>
-        <p class="small muted" style="margin-top:0">Cashiers can only create and print bills. There is no public sign-up — only you can add staff.</p>
+        <h2>Add staff account</h2>
+        <p class="small muted" style="margin-top:0">Only you can add staff. Cashiers create bills at the POS. Salesmen record field deliveries and submit sales bills.</p>
         <div class="form-error hidden" id="formError"></div>
         <form id="userForm" novalidate>
           <div class="field"><label for="uName">Name</label><input id="uName" maxlength="100" required></div>
           <div class="field"><label for="uEmail">Email</label><input id="uEmail" type="email" maxlength="255" required autocomplete="off"></div>
           <div class="field"><label for="uPass">Password (8–72 characters)</label><input id="uPass" type="password" minlength="8" maxlength="72" required autocomplete="new-password"></div>
-          <button class="btn btn-primary" type="submit" id="addBtn">Create cashier</button>
+          <div class="field">
+            <label for="uRole">Role</label>
+            <select id="uRole">
+              <option value="cashier">Cashier (POS billing)</option>
+              <option value="salesman">Salesman (field sales &amp; delivery)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit" id="addBtn">Create account</button>
         </form>
       </section>
     </div>

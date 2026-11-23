@@ -19,14 +19,18 @@ function readProduct(body = {}) {
   };
 }
 
-// All logged-in users (cashiers need the list to make bills).
+// All logged-in users (cashiers need the list to make bills; salesmen are not allowed to view store products).
 router.get('/', requireApi(), async (req, res) => {
+  const isSalesman = req.user && req.user.role === 'salesman';
+  if (isSalesman) {
+    return res.json({ products: [] });
+  }
   const { rows } = await query(`${SELECT} ORDER BY LOWER(p.name)`);
   res.json({ products: rows });
 });
 
 // Products that are low or out of stock (bell + dashboard).
-router.get('/alerts', requireApi(), async (req, res) => {
+router.get('/alerts', requireApi('owner', 'cashier'), async (req, res) => {
   const { rows } = await query(`${SELECT} WHERE p.stock_qty <= p.min_stock OR p.stock_qty <= 0 ORDER BY p.stock_qty, LOWER(p.name)`);
   res.json({ products: rows });
 });

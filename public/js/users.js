@@ -14,11 +14,14 @@
   function render() {
     $('rows').innerHTML = users
       .map((u) => {
-        const editable = u.role === 'cashier' && u.id !== App.user.id;
+        const editable = (u.role === 'cashier' || u.role === 'salesman') && u.id !== App.user.id;
+        const roleBadge = u.role === 'salesman'
+          ? `<span class="badge" style="background:#dbeafe;color:#1e40af">${App.esc(u.role)}</span>`
+          : `<span class="badge badge-role">${App.esc(u.role)}</span>`;
         return `<tr>
           <td><b>${App.esc(u.name)}</b>${u.id === App.user.id ? ' <span class="small muted">(you)</span>' : ''}</td>
           <td>${App.esc(u.email)}</td>
-          <td><span class="badge badge-role">${App.esc(u.role)}</span></td>
+          <td>${roleBadge}</td>
           <td>${u.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-out">Disabled</span>'}</td>
           <td class="actions">${
             editable
@@ -87,12 +90,13 @@
     errBox.classList.add('hidden');
     App.busy($('addBtn'), async () => {
       try {
+        const role = $('uRole') ? $('uRole').value : 'cashier';
         await App.api('/api/users', {
           method: 'POST',
-          body: { name: $('uName').value, email: $('uEmail').value, password: $('uPass').value },
+          body: { name: $('uName').value, email: $('uEmail').value, password: $('uPass').value, role },
         });
         $('userForm').reset();
-        App.toast('Cashier account created', 'success');
+        App.toast(`${role.charAt(0).toUpperCase() + role.slice(1)} account created`, 'success');
         load();
       } catch (err) {
         errBox.textContent = err.message;

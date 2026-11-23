@@ -13,16 +13,17 @@ router.get('/', async (req, res) => {
   res.json({ users: rows });
 });
 
-// Owner creates cashier accounts (there is no public sign-up).
+// Owner creates cashier or salesman accounts (there is no public sign-up).
 router.post('/', async (req, res) => {
   const body = req.body || {};
-  const name = v.text(body.name, 'Name', { required: true, max: 100 });
+  const name  = v.text(body.name, 'Name', { required: true, max: 100 });
   const email = v.email(body.email);
   const password = v.password(body.password);
+  const role = v.oneOf(body.role, 'Role', ['cashier', 'salesman'], 'cashier');
   try {
     const { rows } = await query(
-      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'cashier') RETURNING ${FIELDS}`,
-      [name, email, await hashPassword(password)]
+      `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING ${FIELDS}`,
+      [name, email, await hashPassword(password), role]
     );
     res.status(201).json({ user: rows[0] });
   } catch (err) {
@@ -36,7 +37,7 @@ async function getCashier(idParam, currentUser) {
   if (id === currentUser.id) throw new v.HttpError(400, 'You cannot change your own account here');
   const { rows } = await query('SELECT id, role FROM users WHERE id = $1', [id]);
   if (!rows.length) throw new v.HttpError(404, 'User not found');
-  if (rows[0].role !== 'cashier') throw new v.HttpError(403, 'Owner accounts can only be changed with the create-owner script');
+  if (rows[0].role !== 'cashier' && rows[0].role !== 'salesman') throw new v.HttpError(403, 'Owner accounts can only be changed with the create-owner script');
   return id;
 }
 
