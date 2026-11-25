@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">MJ AUTOS</string>
+    <!-- Default URL to load in the app -->
+    <string name="website_url">https://mjstock-zeta.vercel.app/</string>
+    <string name="website_host">mjstock-zeta.vercel.app</string>
+
+    <string name="error_no_internet_title">No Internet Connection</string>
+    <string name="error_no_internet_msg">Unable to connect to MJ AUTOS. Please check your mobile data or Wi-Fi connection and tap Retry.</string>
+    <string name="btn_retry">Retry</string>
+    <string name="btn_change_url">Server Settings</string>
+    <string name="press_again_to_exit">Press back again to exit</string>
+    <string name="downloading_file">Downloading file…</string>
+    <string name="download_complete">Download completed</string>
+    <string name="permission_camera_required">Camera permission is required to capture photos</string>
+    <string name="dialog_set_url_title">Set Server URL</string>
+    <string name="dialog_set_url_msg">Enter the website URL for MJ AUTOS (e.g. your live domain or local IP http://192.168.1.x:3000):</string>
+</resources>

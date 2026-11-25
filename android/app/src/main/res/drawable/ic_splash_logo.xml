@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Rounded Background Container -->
+    <path
+        android:fillColor="#151A24"
+        android:pathData="M20,10 h80 a10,10 0 0 1 10,10 v80 a10,10 0 0 1 -10,10 h-80 a10,10 0 0 1 -10,-10 v-80 a10,10 0 0 1 10,-10 z"/>
+    <!-- Red Accent Header Bar -->
+    <path
+        android:fillColor="#D62828"
+        android:pathData="M20,10 h80 a10,10 0 0 1 10,10 v12 h-100 v-12 a10,10 0 0 1 10,-10 z"/>
+    <!-- Gear / Auto Symbol -->
+    <path
+        android:fillColor="#D62828"
+        android:pathData="M60,42 c-11,0 -20,9 -20,20 s9,20 20,20 s20,-9 20,-20 s-9,-20 -20,-20 z M60,74 c-6.6,0 -12,-5.4 -12,-12 s5.4,-12 12,-12 s12,5.4 12,12 s-5.4,12 -12,12 z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,54 h8 v16 h-8 z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,58 h16 v8 h-16 z"/>
+</vector>

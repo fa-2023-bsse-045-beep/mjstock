@@ -1,0 +1,21 @@
+<resources>
+    <!-- MJ AUTOS Brand Palette -->
+    <color name="brand_primary">#D62828</color>
+    <color name="brand_primary_dark">#A91D1D</color>
+    <color name="brand_accent">#003049</color>
+    
+    <!-- Background & Surface -->
+    <color name="app_dark_bg">#151A24</color>
+    <color name="app_card_bg">#1E293B</color>
+    <color name="page_bg">#F3F4F7</color>
+    
+    <!-- Text -->
+    <color name="text_primary">#1C2230</color>
+    <color name="text_muted">#6B7385</color>
+    <color name="text_white">#FFFFFF</color>
+    
+    <!-- Status -->
+    <color name="status_ok">#1F9D55</color>
+    <color name="status_low">#E07B00</color>
+    <color name="status_out">#D62828</color>
+</resources>
